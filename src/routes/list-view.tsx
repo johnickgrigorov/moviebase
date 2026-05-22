@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Trash2, Pencil, GripVertical } from 'lucide-react';
+import { Trash2, Pencil, GripVertical, StickyNote } from 'lucide-react';
 import clsx from 'clsx';
 import { db, type CustomListItem } from '../lib/db';
-import { deleteList, renameList, removeFromList, reorderListItem } from '../lib/mutations';
+import { deleteList, renameList, removeFromList, reorderListItem, updateListItemNotes } from '../lib/mutations';
 import { Poster } from '../components/poster';
 import { BackButton } from '../components/back-button';
+import { NoteModal } from '../components/note-modal';
 
 export function ListView() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +28,7 @@ export function ListView() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [noteItem, setNoteItem] = useState<CustomListItem | null>(null);
 
   if (!list) {
     return (
@@ -110,13 +112,37 @@ export function ListView() {
           <div className="text-2xs mt-1">Добавляй фильмы и сериалы кнопкой «В подборку» на их странице</div>
         </div>
       ) : (
-        <DraggableGrid items={items} listId={list.id} />
+        <DraggableGrid items={items} listId={list.id} onNoteEdit={setNoteItem} />
+      )}
+
+      {noteItem && (
+        <NoteModal
+          title={noteItem.title}
+          initialNote={noteItem.notes ?? ''}
+          onConfirm={async (note) => {
+            await updateListItemNotes(noteItem.list_id, noteItem.media_type, noteItem.tmdb_id, note);
+            setNoteItem(null);
+          }}
+          onSkip={async () => {
+            await updateListItemNotes(noteItem.list_id, noteItem.media_type, noteItem.tmdb_id, '');
+            setNoteItem(null);
+          }}
+          onClose={() => setNoteItem(null)}
+        />
       )}
     </div>
   );
 }
 
-function DraggableGrid({ items, listId }: { items: CustomListItem[]; listId: string }) {
+function DraggableGrid({
+  items,
+  listId,
+  onNoteEdit,
+}: {
+  items: CustomListItem[];
+  listId: string;
+  onNoteEdit: (item: CustomListItem) => void;
+}) {
   const [dragKey, setDragKey] = useState<string | null>(null);
   const [overKey, setOverKey] = useState<string | null>(null);
   const pointerActive = useRef(false);
@@ -190,6 +216,12 @@ function DraggableGrid({ items, listId }: { items: CustomListItem[]; listId: str
               <Poster path={it.poster_path} alt={it.title} size="w300" />
               <div className="text-sm font-medium mt-2 leading-tight line-clamp-2">{it.title}</div>
               <div className="text-2xs text-text-dim mt-0.5">{it.release_year || '—'}</div>
+              {it.notes && (
+                <div className="flex items-start gap-1 mt-1">
+                  <StickyNote size={10} className="text-accent mt-0.5 shrink-0" />
+                  <p className="text-2xs text-text-muted leading-tight line-clamp-2">{it.notes}</p>
+                </div>
+              )}
             </Link>
             <button
               onClick={() => removeFromList(listId, it.media_type, it.tmdb_id)}
@@ -204,6 +236,12 @@ function DraggableGrid({ items, listId }: { items: CustomListItem[]; listId: str
               aria-label="Перетащить"
             >
               <GripVertical size={12} />
+            </button>
+            <button
+              onClick={(e) => { e.preventDefault(); onNoteEdit(it); }}
+              className="absolute bottom-[52px] right-1 w-6 h-6 rounded-full bg-bg/80 backdrop-blur-sm flex items-center justify-center active:text-accent"
+            >
+              <StickyNote size={11} className={it.notes ? 'text-accent' : 'text-text-dim'} />
             </button>
           </div>
         );
