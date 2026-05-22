@@ -22,10 +22,9 @@ interface MediaInfo {
   release_year: string;
 }
 
-export async function addToWatchlist(m: MediaInfo, notes = ''): Promise<void> {
+export async function addToWatchlist(m: MediaInfo): Promise<void> {
   const t = now();
   const key = k.watchlist(m.media_type, m.tmdb_id);
-  const existing = await db.watchlist.get(key);
   const item: WatchlistItem = {
     key,
     media_type: m.media_type,
@@ -33,20 +32,11 @@ export async function addToWatchlist(m: MediaInfo, notes = ''): Promise<void> {
     title: m.title,
     poster_path: m.poster_path,
     release_year: m.release_year,
-    notes: notes || existing?.notes,
-    added_at: existing?.added_at ?? t,
+    added_at: t,
     updated_at: t,
   };
   await db.watchlist.put(item);
   await db.tombstones.delete(k.tombstone('watchlist', key));
-  markDirty();
-}
-
-export async function updateWatchlistNotes(media_type: MediaType, tmdb_id: number, notes: string): Promise<void> {
-  const key = k.watchlist(media_type, tmdb_id);
-  const existing = await db.watchlist.get(key);
-  if (!existing) return;
-  await db.watchlist.put({ ...existing, notes, updated_at: now() });
   markDirty();
 }
 
@@ -130,11 +120,6 @@ export async function markSeasonWatched(tv_id: number, season_number: number, ep
     updated_at: t,
   }));
   await db.watchedEpisodes.bulkPut(items);
-  // Удаляем tombstones чтобы sync не откатил эпизоды назад
-  const tombstoneKeys = episode_numbers.map((n) =>
-    k.tombstone('watchedEpisodes', k.episode(tv_id, season_number, n)),
-  );
-  await db.tombstones.bulkDelete(tombstoneKeys);
   markDirty();
 }
 
@@ -227,11 +212,10 @@ export async function deleteList(id: string): Promise<void> {
   markDirty();
 }
 
-export async function addToList(list_id: string, m: MediaInfo, notes = ''): Promise<void> {
+export async function addToList(list_id: string, m: MediaInfo): Promise<void> {
   const t = now();
   const key = k.listItem(list_id, m.media_type, m.tmdb_id);
-  const existing = await db.listItems.get(key);
-  const lastOrder = existing?.order ?? (await db.listItems.where('list_id').equals(list_id).count());
+  const lastOrder = await db.listItems.where('list_id').equals(list_id).count();
   const item: CustomListItem = {
     key,
     list_id,
@@ -240,21 +224,12 @@ export async function addToList(list_id: string, m: MediaInfo, notes = ''): Prom
     title: m.title,
     poster_path: m.poster_path,
     release_year: m.release_year,
-    notes: notes || existing?.notes,
     order: lastOrder,
-    added_at: existing?.added_at ?? t,
+    added_at: t,
     updated_at: t,
   };
   await db.listItems.put(item);
   await db.tombstones.delete(k.tombstone('listItems', key));
-  markDirty();
-}
-
-export async function updateListItemNotes(list_id: string, media_type: MediaType, tmdb_id: number, notes: string): Promise<void> {
-  const key = k.listItem(list_id, media_type, tmdb_id);
-  const existing = await db.listItems.get(key);
-  if (!existing) return;
-  await db.listItems.put({ ...existing, notes, updated_at: now() });
   markDirty();
 }
 

@@ -130,8 +130,8 @@ function WatchedTab() {
   const episodesCount = useLiveQuery(() => db.watchedEpisodes.count()) ?? 0;
   const seriesCount =
     useLiveQuery(async () => {
-      const list = await db.watchedEpisodes.toArray();
-      return new Set(list.map((e) => e.tv_id)).size;
+      const keys = await db.watchedEpisodes.orderBy('tv_id').uniqueKeys();
+      return keys.length;
     }) ?? 0;
 
   return (

@@ -48,8 +48,7 @@ export function TvDetails() {
   const backdrop = imgUrl(data.backdrop_path, 'w500');
   const year = data.first_air_date?.slice(0, 4) ?? '';
   const totalAired = data.seasons.filter((s) => s.season_number > 0).reduce((sum, s) => sum + s.episode_count, 0);
-  // Исключаем specials (season 0) чтобы watchedCount не превышал totalAired
-  const watchedCount = watchedEps.filter((e) => e.season_number > 0).length;
+  const watchedCount = watchedEps.length;
   const progressPct = totalAired > 0 ? Math.min(100, Math.round((watchedCount / totalAired) * 100)) : 0;
 
   return (

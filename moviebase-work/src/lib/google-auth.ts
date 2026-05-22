@@ -81,8 +81,6 @@ function loadAuth(): AuthState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as AuthState;
     if (!parsed.token || !parsed.expiresAt) return null;
-    // Не показываем просроченный токен как авторизованный
-    if (parsed.expiresAt < Date.now()) return null;
     return parsed;
   } catch {
     return null;

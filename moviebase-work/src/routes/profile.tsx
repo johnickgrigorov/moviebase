@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   LogIn,
@@ -39,7 +39,6 @@ export function Profile() {
   const [sync, setSync] = useState(getSyncState());
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     const unsub = subscribeAuth(setAuth);
@@ -53,12 +52,8 @@ export function Profile() {
 
   const showToast = (msg: string) => {
     setToast(msg);
-    clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2500);
+    setTimeout(() => setToast(null), 2500);
   };
-
-  // Cleanup таймера при размонтировании
-  useEffect(() => () => clearTimeout(toastTimer.current), []);
 
   const handleSignIn = async () => {
     try {
@@ -75,9 +70,7 @@ export function Profile() {
     setBusy('push');
     await pushBackup();
     setBusy(null);
-    const s = getSyncState();
-    if (s.status === 'error') showToast(s.lastError ? `Ошибка: ${s.lastError}` : 'Ошибка синхронизации');
-    else showToast('Бэкап загружен в Drive');
+    showToast('Бэкап загружен в Drive');
   };
 
   const handlePull = async () => {

@@ -40,34 +40,24 @@ export function ActionBar({ media_type, tmdb_id, title, poster_path, release_yea
         .count();
     }, [media_type, tmdb_id]) ?? 0;
 
-  const [pending, setPending] = useState(false);
   const [ratingOpen, setRatingOpen] = useState(false);
   const [listsOpen, setListsOpen] = useState(false);
 
   const info = { media_type, tmdb_id, title, poster_path, release_year };
 
   const toggleWatchlist = async () => {
-    if (pending) return;
-    setPending(true);
-    try {
-      if (inWatchlist) await removeFromWatchlist(media_type, tmdb_id);
-      else await addToWatchlist(info);
-    } finally {
-      setPending(false);
-    }
+    if (inWatchlist) await removeFromWatchlist(media_type, tmdb_id);
+    else await addToWatchlist(info);
   };
 
   const toggleWatched = async () => {
     if (media_type !== 'movie') return;
-    if (pending) return;
     if (watched) {
-      setPending(true);
-      try { await unmarkMovieWatched(tmdb_id); } finally { setPending(false); }
+      await unmarkMovieWatched(tmdb_id);
     } else if (onWatchedClick) {
       onWatchedClick();
     } else {
-      setPending(true);
-      try { await markMovieWatched(info); } finally { setPending(false); }
+      await markMovieWatched(info);
     }
   };
 
@@ -79,7 +69,6 @@ export function ActionBar({ media_type, tmdb_id, title, poster_path, release_yea
           icon={<Bookmark size={18} fill={inWatchlist ? 'currentColor' : 'none'} strokeWidth={1.6} />}
           label={inWatchlist ? 'В списке' : 'В список'}
           onClick={toggleWatchlist}
-          disabled={pending}
         />
         {media_type === 'movie' ? (
           <ActionButton
@@ -144,14 +133,12 @@ function ActionButton({
   label,
   onClick,
   variant = 'default',
-  disabled = false,
 }: {
   active: boolean;
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
   variant?: 'default' | 'success' | 'amber';
-  disabled?: boolean;
 }) {
   const activeColors =
     variant === 'success'
@@ -161,7 +148,6 @@ function ActionButton({
   return (
     <button
       onClick={onClick}
-      disabled={disabled}
       className={clsx(
         'rounded-lg border p-2.5 flex flex-col items-center gap-1 transition-all active:scale-95',
         active ? activeColors : 'border-border bg-bg-elevated text-text-muted',

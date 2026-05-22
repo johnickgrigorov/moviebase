@@ -21,12 +21,14 @@ export function Search() {
     queryKey: ['search', query],
     queryFn: () => api.search(query),
     enabled: query.length >= 2 && tab === 'media',
+    placeholderData: (prev) => prev,
   });
 
   const { data: peopleData, isLoading: peopleLoading } = useQuery({
     queryKey: ['search-people', query],
     queryFn: () => api.searchPeople(query),
     enabled: query.length >= 2 && tab === 'people',
+    placeholderData: (prev) => prev,
   });
 
   const mediaResults = (mediaData?.results ?? []).filter(
