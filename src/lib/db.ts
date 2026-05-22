@@ -8,6 +8,7 @@ export interface WatchlistItem {
   title: string;
   poster_path: string | null;
   release_year: string;
+  notes?: string;
   added_at: number;
   updated_at: number;
 }
@@ -64,6 +65,7 @@ export interface CustomListItem {
   title: string;
   poster_path: string | null;
   release_year: string;
+  notes?: string;
   order: number;
   added_at: number;
   updated_at: number;
@@ -96,6 +98,18 @@ export class MoviebaseDb extends Dexie {
   constructor() {
     super('moviebase-personal');
     this.version(1).stores({
+      watchlist: 'key, media_type, tmdb_id, added_at, updated_at',
+      watchedMovies: 'tmdb_id, watched_at, updated_at',
+      watchedEpisodes: 'key, tv_id, [tv_id+season_number], watched_at, updated_at',
+      tvMeta: 'tv_id, updated_at',
+      ratings: 'key, media_type, tmdb_id, score, updated_at',
+      lists: 'id, name, created_at, updated_at',
+      listItems: 'key, list_id, [list_id+order], updated_at',
+      tombstones: 'key, table, deleted_at',
+      settings: 'key, updated_at',
+    });
+    // version 2: adds notes field to watchlist and listItems (no schema change needed — Dexie stores all fields)
+    this.version(2).stores({
       watchlist: 'key, media_type, tmdb_id, added_at, updated_at',
       watchedMovies: 'tmdb_id, watched_at, updated_at',
       watchedEpisodes: 'key, tv_id, [tv_id+season_number], watched_at, updated_at',
