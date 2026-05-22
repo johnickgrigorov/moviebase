@@ -180,7 +180,7 @@ export function TvDetails() {
           <h3 className="text-2xs uppercase tracking-wider text-text-dim mb-3 px-4">В ролях</h3>
           <div className="flex gap-3 overflow-x-auto hide-scrollbar px-4">
             {data.credits.cast.slice(0, 15).map((p) => (
-              <div key={p.id} className="shrink-0 w-20">
+              <Link key={p.id} to={`/person/${p.id}`} className="shrink-0 w-20 active:opacity-70">
                 <div className="aspect-square overflow-hidden rounded-full bg-bg-elevated">
                   {p.profile_path && (
                     <img src={imgUrl(p.profile_path, 'w185')!} alt={p.name} className="w-full h-full object-cover" />
@@ -188,7 +188,7 @@ export function TvDetails() {
                 </div>
                 <div className="text-2xs font-medium mt-1.5 leading-tight line-clamp-2">{p.name}</div>
                 {p.character && <div className="text-2xs text-text-dim mt-0.5 leading-tight line-clamp-2">{p.character}</div>}
-              </div>
+              </Link>
             ))}
           </div>
         </section>

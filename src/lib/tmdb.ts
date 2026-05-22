@@ -227,8 +227,7 @@ export const api = {
       sort_by: opts.sort_by ?? 'popularity.desc',
       with_genres: opts.genre_id,
       primary_release_year: opts.year,
-      'vote_count.gte': opts.sort_by?.startsWith('vote_average') || opts.minRating ? 200 : undefined,
-      'vote_average.gte': opts.minRating,
+      'vote_count.gte': opts.sort_by?.startsWith('vote_average') ? 200 : undefined,
     }),
   discoverTv: (opts: DiscoverOpts = {}) =>
     tmdb<Paged<TvSummary>>(`/discover/tv`, {
@@ -237,9 +236,14 @@ export const api = {
       sort_by: opts.sort_by ?? 'popularity.desc',
       with_genres: opts.genre_id,
       first_air_date_year: opts.year,
-      'vote_count.gte': opts.sort_by?.startsWith('vote_average') || opts.minRating ? 100 : undefined,
-      'vote_average.gte': opts.minRating,
+      'vote_count.gte': opts.sort_by?.startsWith('vote_average') ? 100 : undefined,
     }),
+  searchPeople: (query: string, page = 1) =>
+    tmdb<Paged<PersonSummary>>(`/search/person`, { query, page, include_adult: false }),
+  personDetails: (id: number) =>
+    tmdb<PersonDetails>(`/person/${id}`),
+  personCredits: (id: number) =>
+    tmdb<PersonCredits>(`/person/${id}/combined_credits`),
 };
 
 export type DiscoverSort =
@@ -253,8 +257,31 @@ export interface DiscoverOpts {
   sort_by?: DiscoverSort;
   genre_id?: number;
   year?: number;
-  minRating?: number;
 }
 
 export { TmdbError };
 
+export interface PersonSummary {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  known_for_department: string;
+  known_for: (MovieSummary | TvSummary)[];
+}
+
+export interface PersonDetails {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  biography: string;
+  birthday: string | null;
+  deathday: string | null;
+  place_of_birth: string | null;
+  known_for_department: string;
+  also_known_as: string[];
+}
+
+export interface PersonCredits {
+  cast: (MovieSummary & TvSummary & { media_type: MediaType; character: string; release_date?: string; first_air_date?: string })[];
+  crew: (MovieSummary & TvSummary & { media_type: MediaType; job: string; department: string })[];
+}

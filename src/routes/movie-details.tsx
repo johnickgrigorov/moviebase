@@ -1,10 +1,11 @@
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Star } from 'lucide-react';
 import { api, imgUrl } from '../lib/tmdb';
 import { formatRuntime, formatDate, formatVote } from '../lib/format';
 import { Poster } from '../components/poster';
 import { ActionBar } from '../components/action-bar';
+import { markMovieWatched } from '../lib/mutations';
 import { BackButton } from '../components/back-button';
 import { MediaRow } from '../components/media-row';
 
@@ -81,7 +82,22 @@ export function MovieDetails() {
           title={data.title}
           poster_path={data.poster_path}
           release_year={year}
+          onWatchedClick={() => setDatePickerOpen(true)}
         />
+
+      {datePickerOpen && (
+        <DatePickerModal
+          title="Дата просмотра"
+          onConfirm={async (ts) => {
+            await markMovieWatched(
+              { tmdb_id: data.id, title: data.title, poster_path: data.poster_path, release_year: year },
+              ts,
+            );
+            setDatePickerOpen(false);
+          }}
+          onClose={() => setDatePickerOpen(false)}
+        />
+      )}
       </div>
 
       {data.overview && (
@@ -110,7 +126,7 @@ export function MovieDetails() {
           <h3 className="text-2xs uppercase tracking-wider text-text-dim mb-3 px-4">В ролях</h3>
           <div className="flex gap-3 overflow-x-auto hide-scrollbar px-4">
             {data.credits.cast.slice(0, 15).map((p) => (
-              <div key={p.id} className="shrink-0 w-20">
+              <Link key={p.id} to={`/person/${p.id}`} className="shrink-0 w-20 active:opacity-70">
                 <div className="aspect-square overflow-hidden rounded-full bg-bg-elevated">
                   {p.profile_path && (
                     <img src={imgUrl(p.profile_path, 'w185')!} alt={p.name} className="w-full h-full object-cover" />
@@ -118,7 +134,7 @@ export function MovieDetails() {
                 </div>
                 <div className="text-2xs font-medium mt-1.5 leading-tight line-clamp-2">{p.name}</div>
                 {p.character && <div className="text-2xs text-text-dim mt-0.5 leading-tight line-clamp-2">{p.character}</div>}
-              </div>
+              </Link>
             ))}
           </div>
         </section>
