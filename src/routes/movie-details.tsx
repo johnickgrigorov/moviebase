@@ -88,6 +88,7 @@ export function MovieDetails() {
           release_year={year}
           onWatchedClick={() => setDatePickerOpen(true)}
         />
+      </div>
 
       {datePickerOpen && (
         <DatePickerModal
@@ -102,7 +103,6 @@ export function MovieDetails() {
           onClose={() => setDatePickerOpen(false)}
         />
       )}
-      </div>
 
       {data.overview && (
         <section className="mt-6 px-4">
