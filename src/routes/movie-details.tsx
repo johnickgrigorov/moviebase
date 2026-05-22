@@ -8,6 +8,7 @@ import { Poster } from '../components/poster';
 import { ActionBar } from '../components/action-bar';
 import { markMovieWatched } from '../lib/mutations';
 import { BackButton } from '../components/back-button';
+import { DatePickerModal } from '../components/date-picker-modal';
 import { MediaRow } from '../components/media-row';
 
 export function MovieDetails() {
@@ -91,7 +92,7 @@ export function MovieDetails() {
       {datePickerOpen && (
         <DatePickerModal
           title="Дата просмотра"
-          onConfirm={async (ts) => {
+          onConfirm={async (ts: number) => {
             await markMovieWatched(
               { tmdb_id: data.id, title: data.title, poster_path: data.poster_path, release_year: year },
               ts,

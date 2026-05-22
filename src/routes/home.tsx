@@ -67,8 +67,8 @@ export function Home() {
 
   const filteredItems = useMemo(() => {
     if (!filtersActive) return [];
-    const movieResults = (discoverMovies.data?.results ?? []).map((m: MediaSummary) => ({ ...m, media_type: 'movie' as const }));
-    const tvResults = (discoverTv.data?.results ?? []).map((m: MediaSummary) => ({ ...m, media_type: 'tv' as const }));
+    const movieResults = (discoverMovies.data?.results ?? []).map((m) => ({ ...m, media_type: 'movie' as const })) as MediaSummary[];
+    const tvResults = (discoverTv.data?.results ?? []).map((m) => ({ ...m, media_type: 'tv' as const })) as MediaSummary[];
     if (kind === 'movie') return movieResults;
     if (kind === 'tv') return tvResults;
     // all: interleave
@@ -244,7 +244,7 @@ export function Home() {
           )}
           {filteredItems.length > 0 && (
             <div className="grid grid-cols-3 gap-3">
-              {filteredItems.map((m: MediaSummary) => (
+              {filteredItems.map((m) => (
                 <MediaCard key={`${m.media_type}-${m.id}`} media={m} />
               ))}
             </div>
