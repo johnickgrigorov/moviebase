@@ -98,7 +98,6 @@ export function MovieDetails() {
               { tmdb_id: data.id, title: data.title, poster_path: data.poster_path, release_year: year },
               ts,
             );
-            setDatePickerOpen(false);
           }}
           onClose={() => setDatePickerOpen(false)}
         />

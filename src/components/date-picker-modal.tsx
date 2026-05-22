@@ -43,7 +43,9 @@ export function DatePickerModal({ title, initialDate, onConfirm, onClose }: Date
     try {
       const ts = new Date(year, month, safeDay, 12, 0, 0).getTime();
       await onConfirm(ts);
-    } finally {
+      onClose();
+    } catch (err) {
+      console.error('[DatePickerModal] onConfirm error:', err);
       setBusy(false);
     }
   };
