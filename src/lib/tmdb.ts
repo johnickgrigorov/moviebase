@@ -227,7 +227,8 @@ export const api = {
       sort_by: opts.sort_by ?? 'popularity.desc',
       with_genres: opts.genre_id,
       primary_release_year: opts.year,
-      'vote_count.gte': opts.sort_by?.startsWith('vote_average') ? 200 : undefined,
+      'vote_count.gte': opts.sort_by?.startsWith('vote_average') || opts.minRating ? 200 : undefined,
+      'vote_average.gte': opts.minRating,
     }),
   discoverTv: (opts: DiscoverOpts = {}) =>
     tmdb<Paged<TvSummary>>(`/discover/tv`, {
@@ -236,7 +237,8 @@ export const api = {
       sort_by: opts.sort_by ?? 'popularity.desc',
       with_genres: opts.genre_id,
       first_air_date_year: opts.year,
-      'vote_count.gte': opts.sort_by?.startsWith('vote_average') ? 100 : undefined,
+      'vote_count.gte': opts.sort_by?.startsWith('vote_average') || opts.minRating ? 100 : undefined,
+      'vote_average.gte': opts.minRating,
     }),
 };
 
@@ -251,6 +253,8 @@ export interface DiscoverOpts {
   sort_by?: DiscoverSort;
   genre_id?: number;
   year?: number;
+  minRating?: number;
 }
 
 export { TmdbError };
+
