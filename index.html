@@ -20,6 +20,22 @@
     />
 
     <title>Moviebase Personal</title>
+    <script>
+      // No-flash инициализация темы. Запускается до загрузки React-бандла,
+      // ставит data-theme и meta[name="theme-color"] на основе localStorage/системы.
+      (function () {
+        try {
+          var saved = localStorage.getItem('mb-theme');
+          var choice = (saved === 'dark' || saved === 'light' || saved === 'auto') ? saved : 'auto';
+          var resolved = (choice === 'auto')
+            ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+            : choice;
+          document.documentElement.setAttribute('data-theme', resolved);
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', resolved === 'light' ? '#fbf8f3' : '#0a0908');
+        } catch (e) { /* ignore */ }
+      })();
+    </script>
   </head>
   <body class="bg-bg text-text">
     <div id="root"></div>

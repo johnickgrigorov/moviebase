@@ -16,6 +16,9 @@ import {
   StickyNote as StickyNoteIcon,
   ChevronDown,
   Bell,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { db } from '../lib/db';
@@ -49,6 +52,7 @@ import {
   requestNotifications,
   checkUpcomingNotifications,
 } from '../lib/notifications';
+import { getTheme, setTheme, subscribeTheme, type ThemeChoice } from '../lib/theme';
 import { CsvImportModal } from '../components/csv-import-modal';
 import { useConfirm } from '../components/confirm-modal';
 import { formatRelativeTime, plural, formatHours } from '../lib/format';
@@ -62,6 +66,12 @@ export function Profile() {
   const [csvImportFile, setCsvImportFile] = useState<File | null>(null);
   const { confirm: askConfirm, node: confirmNode } = useConfirm();
   const [notifPerm, setNotifPerm] = useState<NotificationPermission | 'unsupported'>(() => notificationsPermission());
+  const [themeState, setThemeState] = useState(() => getTheme());
+
+  useEffect(() => {
+    const unsub = subscribeTheme(setThemeState);
+    return () => unsub();
+  }, []);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -341,6 +351,37 @@ export function Profile() {
               />
             </label>
           </div>
+        )}
+      </section>
+
+      <section className="bg-bg-elevated border border-border rounded-lg p-4 mb-4">
+        <h3 className="text-2xs uppercase tracking-wider text-text-dim mb-3">Тема</h3>
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            { v: 'auto' as ThemeChoice, label: 'Система', icon: <Monitor size={14} /> },
+            { v: 'dark' as ThemeChoice, label: 'Тёмная', icon: <Moon size={14} /> },
+            { v: 'light' as ThemeChoice, label: 'Светлая', icon: <Sun size={14} /> },
+          ]).map((opt) => (
+            <button
+              key={opt.v}
+              onClick={() => setTheme(opt.v)}
+              aria-pressed={themeState.choice === opt.v}
+              className={clsx(
+                'flex flex-col items-center gap-1 py-2.5 rounded-lg border text-2xs transition-colors',
+                themeState.choice === opt.v
+                  ? 'border-accent/50 bg-accent/10 text-accent'
+                  : 'border-border bg-bg text-text-muted active:border-accent',
+              )}
+            >
+              {opt.icon}
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {themeState.choice === 'auto' && (
+          <p className="text-2xs text-text-dim mt-2 text-center">
+            Сейчас: {themeState.resolved === 'dark' ? 'тёмная' : 'светлая'}
+          </p>
         )}
       </section>
 

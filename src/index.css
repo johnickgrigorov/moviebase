@@ -3,8 +3,86 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  /* === Тёмная тема (по умолчанию) === */
+  :root,
+  [data-theme="dark"] {
     color-scheme: dark;
+
+    --bg: 10 9 8;                 /* #0a0908 */
+    --bg-elevated: 23 21 19;      /* #171513 */
+    --bg-hover: 31 28 25;         /* #1f1c19 */
+    --bg-card: 19 17 15;          /* #13110f */
+
+    --border: 42 38 34;           /* #2a2622 */
+    --border-subtle: 31 28 25;    /* #1f1c19 */
+
+    --text: 245 241 234;          /* #f5f1ea */
+    --text-muted: 160 151 138;    /* #a0978a */
+    --text-dim: 107 99 88;        /* #6b6358 */
+
+    --accent: 249 168 38;         /* #f9a826 */
+    --accent-dim: 201 133 29;     /* #c9851d */
+    --accent-bg: 58 40 16;        /* #3a2810 */
+
+    --success: 124 199 122;       /* #7cc77a */
+    --danger: 224 123 106;        /* #e07b6a */
+
+    --grain-opacity: 0.025;
+    --scrollbar-thumb: 42 38 34;
+    --theme-color: #0a0908;
+  }
+
+  /* === Светлая тема === */
+  [data-theme="light"] {
+    color-scheme: light;
+
+    --bg: 251 248 243;            /* #fbf8f3 — тёплый кремовый */
+    --bg-elevated: 255 255 255;
+    --bg-hover: 243 238 229;
+    --bg-card: 250 246 240;
+
+    --border: 216 208 194;        /* #d8d0c2 */
+    --border-subtle: 236 230 220; /* #ece6dc */
+
+    --text: 26 23 20;             /* #1a1714 */
+    --text-muted: 107 95 80;      /* #6b5f50 */
+    --text-dim: 163 150 137;      /* #a39689 */
+
+    --accent: 214 137 16;         /* #d68910 — глубже amber для контраста на свете */
+    --accent-dim: 185 117 9;      /* #b97509 */
+    --accent-bg: 254 245 224;     /* #fef5e0 */
+
+    --success: 74 150 71;         /* #4a9647 */
+    --danger: 200 80 62;          /* #c8503e */
+
+    --grain-opacity: 0.015;
+    --scrollbar-thumb: 216 208 194;
+    --theme-color: #fbf8f3;
+  }
+
+  /* Auto: следуем системе если data-theme не выставлен — но мы всегда выставляем,
+     поэтому это запасной путь только до загрузки JS-инициализации. */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      color-scheme: light;
+      --bg: 251 248 243;
+      --bg-elevated: 255 255 255;
+      --bg-hover: 243 238 229;
+      --bg-card: 250 246 240;
+      --border: 216 208 194;
+      --border-subtle: 236 230 220;
+      --text: 26 23 20;
+      --text-muted: 107 95 80;
+      --text-dim: 163 150 137;
+      --accent: 214 137 16;
+      --accent-dim: 185 117 9;
+      --accent-bg: 254 245 224;
+      --success: 74 150 71;
+      --danger: 200 80 62;
+      --grain-opacity: 0.015;
+      --scrollbar-thumb: 216 208 194;
+      --theme-color: #fbf8f3;
+    }
   }
 
   * {
@@ -20,11 +98,12 @@
 
   body {
     font-family: 'DM Sans', system-ui, sans-serif;
-    background-color: #0a0908;
-    color: #f5f1ea;
+    background-color: rgb(var(--bg));
+    color: rgb(var(--text));
     overscroll-behavior-y: none;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    transition: background-color 200ms ease, color 200ms ease;
   }
 
   #root {
@@ -37,8 +116,10 @@
   }
 
   input,
-  textarea {
+  textarea,
+  select {
     font-family: inherit;
+    color: inherit;
   }
 
   ::-webkit-scrollbar {
@@ -46,7 +127,7 @@
     height: 6px;
   }
   ::-webkit-scrollbar-thumb {
-    background: #2a2622;
+    background: rgb(var(--scrollbar-thumb));
     border-radius: 3px;
   }
   ::-webkit-scrollbar-track {
@@ -62,7 +143,7 @@
   }
 
   .glow-amber {
-    box-shadow: 0 0 24px -8px rgba(249, 168, 38, 0.4);
+    box-shadow: 0 0 24px -8px rgb(var(--accent) / 0.4);
   }
 
   .grain::after {
@@ -70,9 +151,15 @@
     position: fixed;
     inset: 0;
     pointer-events: none;
-    opacity: 0.025;
+    opacity: var(--grain-opacity);
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     z-index: 1000;
+    mix-blend-mode: multiply;
+  }
+
+  /* На светлой теме шум должен быть мультипликативным, на тёмной — additive */
+  [data-theme="dark"] .grain::after {
+    mix-blend-mode: screen;
   }
 
   .hide-scrollbar {

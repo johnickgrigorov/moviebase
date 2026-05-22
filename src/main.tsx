@@ -6,7 +6,11 @@ import App from './App';
 import './index.css';
 import { initialSync, flushOnUnload } from './lib/sync';
 import { checkUpcomingNotifications } from './lib/notifications';
+import { initTheme } from './lib/theme';
 import { ErrorBoundary } from './components/error-boundary';
+
+// Инициализация темы до первого render — избегаем вспышки тёмного на светлой системе
+initTheme();
 
 const queryClient = new QueryClient({
   defaultOptions: {
