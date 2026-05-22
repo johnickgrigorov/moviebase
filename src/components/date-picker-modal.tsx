@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Calendar, X, Check } from 'lucide-react';
+import { useModalA11y } from '../hooks/use-modal-a11y';
 
 interface DatePickerModalProps {
   title?: string;
@@ -57,9 +58,14 @@ export function DatePickerModal({ title, initialDate, onConfirm, onClose }: Date
   };
 
   const selectClass = "bg-bg border border-border rounded-lg px-2 py-2.5 text-sm text-text focus:outline-none focus:border-accent";
+  const modalRef = useModalA11y(onClose);
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Выбор даты"
+      ref={modalRef}
       className="fixed inset-0 z-[200] bg-bg/80 backdrop-blur-sm flex items-end sm:items-center justify-center"
       onClick={onClose}
     >

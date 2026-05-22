@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -17,24 +16,24 @@ export function TvDetails() {
   const tvId = Number(id);
   const { data, isLoading } = useQuery({
     queryKey: ['tv', tvId],
-    queryFn: () => api.tvDetails(tvId),
+    queryFn: async () => {
+      const d = await api.tvDetails(tvId);
+      // Сохраняем мету сразу после успешной загрузки, а не в useEffect
+      // (избегаем лишних запусков на каждый ref-change data)
+      void saveTvMeta({
+        tv_id: d.id,
+        title: d.name,
+        poster_path: d.poster_path,
+        release_year: d.first_air_date?.slice(0, 4) ?? '',
+        total_episodes: d.number_of_episodes,
+      });
+      return d;
+    },
     enabled: !!tvId,
   });
 
   const watchedEps =
     useLiveQuery(() => db.watchedEpisodes.where('tv_id').equals(tvId).toArray(), [tvId]) ?? [];
-
-  useEffect(() => {
-    if (data) {
-      void saveTvMeta({
-        tv_id: data.id,
-        title: data.name,
-        poster_path: data.poster_path,
-        release_year: data.first_air_date?.slice(0, 4) ?? '',
-        total_episodes: data.number_of_episodes,
-      });
-    }
-  }, [data]);
 
   if (isLoading || !data) {
     return (

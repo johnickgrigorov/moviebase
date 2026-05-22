@@ -5,6 +5,7 @@ import { Trash2, Pencil, GripVertical, StickyNote } from 'lucide-react';
 import clsx from 'clsx';
 import { db, type CustomListItem } from '../lib/db';
 import { deleteList, renameList, removeFromList, reorderListItem, updateListItemNotes } from '../lib/mutations';
+import { useConfirm } from '../components/confirm-modal';
 import { Poster } from '../components/poster';
 import { BackButton } from '../components/back-button';
 import { NoteModal } from '../components/note-modal';
@@ -74,6 +75,7 @@ export function ListView() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [noteItem, setNoteItem] = useState<CustomListItem | null>(null);
+  const { confirm: askConfirm, node: confirmNode } = useConfirm();
 
   if (!listLoaded) {
     return (
@@ -106,7 +108,13 @@ export function ListView() {
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Удалить список «${list.name}»?`)) return;
+    const ok = await askConfirm({
+      title: 'Удалить список?',
+      message: `Список «${list.name}» и все его ${allItems.length} элементов будут удалены. Действие необратимо.`,
+      confirmLabel: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
     await deleteList(list.id);
     nav('/lists');
   };
@@ -181,6 +189,8 @@ export function ListView() {
           )}
         </>
       )}
+
+      {confirmNode}
 
       {noteItem && (
         <NoteModal

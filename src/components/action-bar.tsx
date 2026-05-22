@@ -29,16 +29,13 @@ export function ActionBar({ media_type, tmdb_id, title, poster_path, release_yea
   const inWatchlist = useIsInWatchlist(media_type, tmdb_id);
   const watched = useIsMovieWatched(media_type === 'movie' ? tmdb_id : undefined);
   const rating = useMediaRating(media_type, tmdb_id);
+  // Используем композитный индекс [media_type+tmdb_id] (Dexie v3) — точечный запрос
+  // вместо фильтра по всем listItems. Реактивность ограничена ключом этого медиа.
   const listsCount =
-    useLiveQuery(async () => {
-      const listIds = (await db.lists.toCollection().primaryKeys()) as string[];
-      if (listIds.length === 0) return 0;
-      return db.listItems
-        .where('list_id')
-        .anyOf(listIds)
-        .filter((it) => it.media_type === media_type && it.tmdb_id === tmdb_id)
-        .count();
-    }, [media_type, tmdb_id]) ?? 0;
+    useLiveQuery(
+      () => db.listItems.where('[media_type+tmdb_id]').equals([media_type, tmdb_id]).count(),
+      [media_type, tmdb_id],
+    ) ?? 0;
 
   const [pending, setPending] = useState(false);
   const [ratingOpen, setRatingOpen] = useState(false);

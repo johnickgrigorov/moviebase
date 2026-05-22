@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { db, k } from '../lib/db';
 import { addToList, removeFromList, createList } from '../lib/mutations';
 import type { MediaType } from '../lib/tmdb';
+import { useModalA11y } from '../hooks/use-modal-a11y';
 
 interface ListPickerProps {
   media_type: MediaType;
@@ -41,6 +42,7 @@ export function ListPicker({ media_type, tmdb_id, title, poster_path, release_ye
   }, [toast]);
 
   const info = { media_type, tmdb_id, title, poster_path, release_year };
+  const modalRef = useModalA11y(onClose);
 
   const toggle = async (listId: string, listName: string) => {
     const isIn = membership.has(itemKey(listId));
@@ -65,6 +67,10 @@ export function ListPicker({ media_type, tmdb_id, title, poster_path, release_ye
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Добавить в список"
+      ref={modalRef}
       className="fixed inset-0 z-[110] bg-bg/80 backdrop-blur-sm flex items-end sm:items-center justify-center"
       onClick={onClose}
     >

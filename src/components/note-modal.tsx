@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, StickyNote } from 'lucide-react';
+import { useModalA11y } from '../hooks/use-modal-a11y';
 
 interface NoteModalProps {
   title: string;
@@ -12,6 +13,7 @@ interface NoteModalProps {
 export function NoteModal({ title, initialNote = '', onConfirm, onSkip, onClose }: NoteModalProps) {
   const [note, setNote] = useState(initialNote);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const modalRef = useModalA11y(onClose);
 
   useEffect(() => {
     setTimeout(() => textareaRef.current?.focus(), 100);
@@ -19,6 +21,10 @@ export function NoteModal({ title, initialNote = '', onConfirm, onSkip, onClose 
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Заметка"
+      ref={modalRef}
       className="fixed inset-0 z-[120] bg-bg/80 backdrop-blur-sm flex items-end sm:items-center justify-center"
       onClick={onClose}
     >

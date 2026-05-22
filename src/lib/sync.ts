@@ -1,5 +1,5 @@
 import { exportSnapshot, applySnapshot, type Snapshot, db, now } from './db';
-import { drive, getAuth, isGoogleConfigured, subscribeAuth } from './google-auth';
+import { drive, getAuth, isGoogleConfigured, subscribeAuth, DriveConflictError } from './google-auth';
 
 export type SyncStatus = 'idle' | 'dirty' | 'syncing' | 'error' | 'offline';
 
@@ -80,29 +80,38 @@ function scheduleSync(): void {
   }, DEBOUNCE_MS);
 }
 
-export async function pushBackup(): Promise<void> {
+export async function pushBackup(opts: { force?: boolean } = {}): Promise<{ conflict?: boolean }> {
   if (!isGoogleConfigured()) {
     setState({ status: 'error', lastError: 'Google не настроен' });
-    return;
+    return {};
   }
   if (!getAuth()) {
     setState({ status: 'error', lastError: 'Не авторизован в Google' });
-    return;
+    return {};
   }
   if (!navigator.onLine) {
     setState({ status: 'offline' });
-    return;
+    return {};
   }
   setState({ status: 'syncing', lastError: null });
   try {
     const snap = await exportSnapshot();
-    await drive.pushBackup(JSON.stringify(snap));
+    await drive.pushBackup(JSON.stringify(snap), { force: opts.force });
     setState({ status: 'idle', lastSyncedAt: now() });
+    return {};
   } catch (err) {
+    if (err instanceof DriveConflictError) {
+      setState({
+        status: 'error',
+        lastError: 'Конфликт: бэкап в Drive был изменён на другом устройстве. Нажми Восстановить, чтобы смержить, или Перезаписать чтобы выгрузить локальные.',
+      });
+      return { conflict: true };
+    }
     setState({
       status: 'error',
       lastError: err instanceof Error ? err.message : String(err),
     });
+    return {};
   }
 }
 

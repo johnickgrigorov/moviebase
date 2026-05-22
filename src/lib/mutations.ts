@@ -296,7 +296,13 @@ export async function reorderListItem(list_id: string, item_key: string, new_ind
   const [moved] = reordered.splice(fromIdx, 1);
   reordered.splice(target, 0, moved!);
   const t = now();
-  const updates: CustomListItem[] = reordered.map((item, idx) => ({ ...item, order: idx, updated_at: t }));
+  // Обновляем только тех, у кого order реально изменился — экономим IDB-записи и не
+  // дергаем sync (updated_at триггерит markDirty) для нетронутых элементов.
+  const updates: CustomListItem[] = [];
+  reordered.forEach((item, idx) => {
+    if (item.order !== idx) updates.push({ ...item, order: idx, updated_at: t });
+  });
+  if (updates.length === 0) return;
   await db.listItems.bulkPut(updates);
   markDirty();
 }

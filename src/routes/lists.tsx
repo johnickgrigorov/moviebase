@@ -35,6 +35,31 @@ export function Lists() {
   );
 }
 
+type SortKey = 'date_desc' | 'date_asc' | 'title_asc' | 'rating_desc' | 'year_desc';
+
+const SORT_LABELS_WL: Record<SortKey, string> = {
+  date_desc: 'Сначала новые',
+  date_asc: 'Сначала старые',
+  title_asc: 'По названию',
+  rating_desc: 'По рейтингу',
+  year_desc: 'По году',
+};
+
+function SortMenu({ value, onChange, options }: { value: SortKey; onChange: (v: SortKey) => void; options: SortKey[] }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as SortKey)}
+      aria-label="Сортировка"
+      className="bg-bg-elevated border border-border rounded-full px-3 py-1 text-2xs text-text-muted focus:outline-none focus:border-accent"
+    >
+      {options.map((k) => (
+        <option key={k} value={k}>{SORT_LABELS_WL[k]}</option>
+      ))}
+    </select>
+  );
+}
+
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
@@ -84,11 +109,26 @@ function MediaFilterBar({ value, onChange, counts }: {
 
 function WatchlistTab() {
   const [filter, setFilter] = useState<MediaFilter>('all');
+  const [sort, setSort] = useState<SortKey>('date_desc');
   const all = useLiveQuery(() => db.watchlist.orderBy('added_at').reverse().toArray()) ?? [];
+  const ratings = useLiveQuery(() => db.ratings.toArray()) ?? [];
+  const ratingByKey = new Map(ratings.map((r) => [`${r.media_type}-${r.tmdb_id}`, r.score]));
 
   const movies = all.filter((it) => it.media_type === 'movie');
   const tv = all.filter((it) => it.media_type === 'tv');
-  const items = filter === 'all' ? all : filter === 'movie' ? movies : tv;
+  const base = filter === 'all' ? all : filter === 'movie' ? movies : tv;
+  const items = [...base].sort((a, b) => {
+    if (sort === 'date_desc') return b.added_at - a.added_at;
+    if (sort === 'date_asc') return a.added_at - b.added_at;
+    if (sort === 'title_asc') return a.title.localeCompare(b.title, 'ru');
+    if (sort === 'year_desc') return (b.release_year || '').localeCompare(a.release_year || '');
+    if (sort === 'rating_desc') {
+      const ra = ratingByKey.get(`${a.media_type}-${a.tmdb_id}`) ?? -1;
+      const rb = ratingByKey.get(`${b.media_type}-${b.tmdb_id}`) ?? -1;
+      return rb - ra;
+    }
+    return 0;
+  });
 
   if (all.length === 0) {
     return <EmptyState message="Ничего не отложено" hint="Открой карточку и нажми «В список»" />;
@@ -96,11 +136,16 @@ function WatchlistTab() {
 
   return (
     <div>
-      <MediaFilterBar
-        value={filter}
-        onChange={setFilter}
-        counts={{ all: all.length, movie: movies.length, tv: tv.length }}
-      />
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex-1 min-w-0">
+          <MediaFilterBar
+            value={filter}
+            onChange={setFilter}
+            counts={{ all: all.length, movie: movies.length, tv: tv.length }}
+          />
+        </div>
+        <SortMenu value={sort} onChange={setSort} options={['date_desc', 'date_asc', 'title_asc', 'year_desc', 'rating_desc']} />
+      </div>
       {items.length === 0 ? (
         <EmptyState message={filter === 'movie' ? 'Нет отложенных фильмов' : 'Нет отложенных сериалов'} />
       ) : (
@@ -126,7 +171,22 @@ function WatchlistTab() {
 
 function WatchedTab() {
   const [filter, setFilter] = useState<MediaFilter>('all');
-  const movies = useLiveQuery(() => db.watchedMovies.orderBy('watched_at').reverse().toArray()) ?? [];
+  const [sort, setSort] = useState<SortKey>('date_desc');
+  const moviesRaw = useLiveQuery(() => db.watchedMovies.orderBy('watched_at').reverse().toArray()) ?? [];
+  const ratings = useLiveQuery(() => db.ratings.toArray()) ?? [];
+  const ratingByKey = new Map(ratings.map((r) => [`${r.media_type}-${r.tmdb_id}`, r.score]));
+  const movies = [...moviesRaw].sort((a, b) => {
+    if (sort === 'date_desc') return b.watched_at - a.watched_at;
+    if (sort === 'date_asc') return a.watched_at - b.watched_at;
+    if (sort === 'title_asc') return a.title.localeCompare(b.title, 'ru');
+    if (sort === 'year_desc') return (b.release_year || '').localeCompare(a.release_year || '');
+    if (sort === 'rating_desc') {
+      const ra = ratingByKey.get(`movie-${a.tmdb_id}`) ?? -1;
+      const rb = ratingByKey.get(`movie-${b.tmdb_id}`) ?? -1;
+      return rb - ra;
+    }
+    return 0;
+  });
   const episodesCount = useLiveQuery(() => db.watchedEpisodes.count()) ?? 0;
   const seriesCount =
     useLiveQuery(async () => {
@@ -145,11 +205,16 @@ function WatchedTab() {
         />
       </div>
 
-      <MediaFilterBar
-        value={filter}
-        onChange={setFilter}
-        counts={{ all: movies.length + seriesCount, movie: movies.length, tv: seriesCount }}
-      />
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex-1 min-w-0">
+          <MediaFilterBar
+            value={filter}
+            onChange={setFilter}
+            counts={{ all: movies.length + seriesCount, movie: movies.length, tv: seriesCount }}
+          />
+        </div>
+        <SortMenu value={sort} onChange={setSort} options={['date_desc', 'date_asc', 'title_asc', 'year_desc', 'rating_desc']} />
+      </div>
 
       {(filter === 'all' || filter === 'movie') && (
         <div className="mb-6">
@@ -180,7 +245,7 @@ function WatchedTab() {
           {seriesCount === 0 ? (
             <EmptyState message="Нет просмотренных сериалов" hint="Отмечай эпизоды на странице сериала" />
           ) : (
-            <WatchedSeriesGrid />
+            <WatchedSeriesGrid sort={sort} ratingByKey={ratingByKey} />
           )}
         </div>
       )}
@@ -188,12 +253,12 @@ function WatchedTab() {
   );
 }
 
-function WatchedSeriesGrid() {
+function WatchedSeriesGrid({ sort, ratingByKey }: { sort: SortKey; ratingByKey: Map<string, number> }) {
   const seriesList = useLiveQuery(async () => {
     const episodes = await db.watchedEpisodes.toArray();
     const meta = await db.tvMeta.toArray();
     const metaMap = new Map(meta.map((m) => [m.tv_id, m]));
-    const byId = new Map<number, { tv_id: number; poster_path: string | null; title: string; count: number; last_at: number }>();
+    const byId = new Map<number, { tv_id: number; poster_path: string | null; title: string; release_year: string; count: number; last_at: number }>();
     for (const ep of episodes) {
       const existing = byId.get(ep.tv_id);
       if (existing) {
@@ -201,17 +266,30 @@ function WatchedSeriesGrid() {
         if (ep.watched_at > existing.last_at) existing.last_at = ep.watched_at;
       } else {
         const m = metaMap.get(ep.tv_id);
-        byId.set(ep.tv_id, { tv_id: ep.tv_id, poster_path: m?.poster_path ?? null, title: m?.title ?? '', count: 1, last_at: ep.watched_at });
+        byId.set(ep.tv_id, { tv_id: ep.tv_id, poster_path: m?.poster_path ?? null, title: m?.title ?? '', release_year: m?.release_year ?? '', count: 1, last_at: ep.watched_at });
       }
     }
-    return [...byId.values()].sort((a, b) => b.last_at - a.last_at);
+    return [...byId.values()];
   }) ?? [];
 
-  if (seriesList.length === 0) return null;
+  const sorted = [...seriesList].sort((a, b) => {
+    if (sort === 'date_desc') return b.last_at - a.last_at;
+    if (sort === 'date_asc') return a.last_at - b.last_at;
+    if (sort === 'title_asc') return a.title.localeCompare(b.title, 'ru');
+    if (sort === 'year_desc') return (b.release_year || '').localeCompare(a.release_year || '');
+    if (sort === 'rating_desc') {
+      const ra = ratingByKey.get(`tv-${a.tv_id}`) ?? -1;
+      const rb = ratingByKey.get(`tv-${b.tv_id}`) ?? -1;
+      return rb - ra;
+    }
+    return 0;
+  });
+
+  if (sorted.length === 0) return null;
 
   return (
     <div className="grid grid-cols-3 gap-3">
-      {seriesList.map((s) => (
+      {sorted.map((s) => (
         <Link key={s.tv_id} to={`/tv/${s.tv_id}`}>
           <Poster path={s.poster_path} alt={s.title} size="w300" />
           <div className="text-sm font-medium mt-2 leading-tight line-clamp-2">{s.title}</div>

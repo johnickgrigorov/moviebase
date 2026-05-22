@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Star, X, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
+import { useModalA11y } from '../hooks/use-modal-a11y';
 
 interface RatingModalProps {
   currentScore: number | undefined;
@@ -13,9 +14,14 @@ export function RatingModal({ currentScore, onSubmit, onRemove, onClose }: Ratin
   // hover на мобильных бесполезен — используем только selected. На десктопе тоже понятно.
   const [selected, setSelected] = useState<number>(currentScore ?? 0);
   const display = selected;
+  const modalRef = useModalA11y(onClose);
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Ваша оценка"
+      ref={modalRef}
       className="fixed inset-0 z-[100] bg-bg/80 backdrop-blur-sm flex items-end sm:items-center justify-center"
       onClick={onClose}
     >

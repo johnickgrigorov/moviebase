@@ -9,6 +9,7 @@ import {
   type ImportPreviewItem,
   type ImportFormat,
 } from '../lib/csv';
+import { useModalA11y } from '../hooks/use-modal-a11y';
 
 interface Props {
   file: File;
@@ -26,6 +27,7 @@ const FORMAT_LABELS: Record<ImportFormat, string> = {
 };
 
 export function CsvImportModal({ file, onClose, onDone }: Props) {
+  const modalRef = useModalA11y(onClose);
   const [stage, setStage] = useState<'parsing' | 'preview' | 'resolving' | 'applying'>('parsing');
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -84,7 +86,14 @@ export function CsvImportModal({ file, onClose, onDone }: Props) {
     : null;
 
   return (
-    <div className="fixed inset-0 z-[200] bg-bg/85 backdrop-blur-sm flex items-end sm:items-center justify-center" onClick={onClose}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Импорт CSV"
+      ref={modalRef}
+      className="fixed inset-0 z-[200] bg-bg/85 backdrop-blur-sm flex items-end sm:items-center justify-center"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-app bg-bg-elevated border-t border-border sm:border sm:rounded-2xl flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}

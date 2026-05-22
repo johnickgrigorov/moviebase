@@ -1,5 +1,9 @@
 import { Route, Routes, useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { NavBar } from './components/nav-bar';
+import { usePullToRefresh } from './hooks/use-pull-to-refresh';
+import { PullToRefreshIndicator } from './components/pull-to-refresh-indicator';
+import { BackToTop } from './components/back-to-top';
 import { Home } from './routes/home';
 import { Search } from './routes/search';
 import { Lists } from './routes/lists';
@@ -14,14 +18,19 @@ import { TmdbTokenWarning } from './components/tmdb-token-warning';
 
 export default function App() {
   const location = useLocation();
+  const qc = useQueryClient();
   const isDetailPage =
     location.pathname.startsWith('/movie/') ||
     location.pathname.startsWith('/tv/') ||
     location.pathname.startsWith('/list/') ||
     location.pathname.startsWith('/person/');
 
+  // Pull-to-refresh: инвалидируем все React Query запросы — данные сами перетянутся
+  const ptr = usePullToRefresh(() => qc.invalidateQueries());
+
   return (
     <div className="min-h-screen mx-auto max-w-app pb-20 grain">
+      <PullToRefreshIndicator {...ptr} />
       <TmdbTokenWarning />
       <Routes>
         <Route path="/" element={<Home />} />
@@ -35,7 +44,12 @@ export default function App() {
         <Route path="/list/:id" element={<ListView />} />
         <Route path="/person/:id" element={<PersonDetails />} />
       </Routes>
-      {!isDetailPage && <NavBar />}
+      {!isDetailPage && (
+        <>
+          <BackToTop />
+          <NavBar />
+        </>
+      )}
     </div>
   );
 }

@@ -120,6 +120,18 @@ export class MoviebaseDb extends Dexie {
       tombstones: 'key, table, deleted_at',
       settings: 'key, updated_at',
     });
+    // version 3: add [media_type+tmdb_id] index on listItems for fast "is in any list" lookup
+    this.version(3).stores({
+      watchlist: 'key, media_type, tmdb_id, added_at, updated_at',
+      watchedMovies: 'tmdb_id, watched_at, updated_at',
+      watchedEpisodes: 'key, tv_id, [tv_id+season_number], watched_at, updated_at',
+      tvMeta: 'tv_id, updated_at',
+      ratings: 'key, media_type, tmdb_id, score, updated_at',
+      lists: 'id, name, created_at, updated_at',
+      listItems: 'key, list_id, [list_id+order], [media_type+tmdb_id], updated_at',
+      tombstones: 'key, table, deleted_at',
+      settings: 'key, updated_at',
+    });
   }
 }
 

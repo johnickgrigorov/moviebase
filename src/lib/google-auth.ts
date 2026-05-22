@@ -197,6 +197,14 @@ export function signOut(): void {
     window.google.accounts.oauth2.revoke(cur.token);
   }
   setAuth(null);
+  try { localStorage.removeItem('mb-drive-known-modifiedTime'); } catch {}
+}
+
+export class DriveConflictError extends Error {
+  constructor(public remoteModifiedTime: string, public localKnownModifiedTime: string | null) {
+    super('Drive conflict: remote backup был изменён на другом устройстве');
+    this.name = 'DriveConflictError';
+  }
 }
 
 const BACKUP_FOLDER_NAME = 'Moviebase Personal';
@@ -293,16 +301,44 @@ async function deleteFile(fileId: string): Promise<void> {
   });
 }
 
+const REMOTE_MT_KEY = 'mb-drive-known-modifiedTime';
+
+function getKnownRemoteMt(): string | null {
+  try { return localStorage.getItem(REMOTE_MT_KEY); } catch { return null; }
+}
+function setKnownRemoteMt(mt: string | null): void {
+  try {
+    if (mt) localStorage.setItem(REMOTE_MT_KEY, mt);
+    else localStorage.removeItem(REMOTE_MT_KEY);
+  } catch {}
+}
+
 export const drive = {
-  async pushBackup(snapshotJson: string): Promise<void> {
+  /**
+   * Загружает снапшот в Drive. Если known remote modifiedTime разошёлся с
+   * фактическим — бросает DriveConflictError (другой клиент перезаписал latest).
+   * Опция `force` пропускает проверку (после явного выбора пользователя).
+   */
+  async pushBackup(snapshotJson: string, opts: { force?: boolean } = {}): Promise<void> {
     const folderId = await findOrCreateFolder();
+    const existing = await listBackups(folderId);
+    const latest = existing.find((f) => f.name === BACKUP_LATEST);
+
+    // ETag-like check: сравниваем известный modifiedTime с фактическим
+    if (!opts.force && latest) {
+      const known = getKnownRemoteMt();
+      if (known && known !== latest.modifiedTime) {
+        throw new DriveConflictError(latest.modifiedTime, known);
+      }
+    }
+
+    // Сначала пишем history файл, потом перетираем latest
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
     const histName = `${BACKUP_PREFIX}${ts}.json`;
     await uploadJson(folderId, histName, snapshotJson);
 
-    const existing = await listBackups(folderId);
-    const latest = existing.find((f) => f.name === BACKUP_LATEST);
-    await uploadJson(folderId, BACKUP_LATEST, snapshotJson, latest?.id);
+    const newLatest = await uploadJson(folderId, BACKUP_LATEST, snapshotJson, latest?.id);
+    setKnownRemoteMt(newLatest.modifiedTime);
 
     const history = (await listBackups(folderId)).filter((f) => f.name !== BACKUP_LATEST);
     history.sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime));
@@ -314,8 +350,15 @@ export const drive = {
     const folderId = await findOrCreateFolder();
     const files = await listBackups(folderId);
     const latest = files.find((f) => f.name === BACKUP_LATEST) ?? files[0];
-    if (!latest) return null;
+    if (!latest) {
+      setKnownRemoteMt(null);
+      return null;
+    }
     const text = await downloadJson(latest.id);
+    setKnownRemoteMt(latest.modifiedTime);
     return { snapshot: JSON.parse(text), modifiedTime: latest.modifiedTime };
   },
+
+  /** Сбросить known modifiedTime — нужно после force push или logout */
+  resetKnownMt(): void { setKnownRemoteMt(null); },
 };

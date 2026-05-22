@@ -15,6 +15,7 @@ import {
   ListChecks,
   StickyNote as StickyNoteIcon,
   ChevronDown,
+  Bell,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { db } from '../lib/db';
@@ -42,7 +43,14 @@ import {
   exportListsCsv,
   exportNotesCsv,
 } from '../lib/csv';
+import {
+  isNotificationsSupported,
+  notificationsPermission,
+  requestNotifications,
+  checkUpcomingNotifications,
+} from '../lib/notifications';
 import { CsvImportModal } from '../components/csv-import-modal';
+import { useConfirm } from '../components/confirm-modal';
 import { formatRelativeTime, plural, formatHours } from '../lib/format';
 
 export function Profile() {
@@ -52,6 +60,8 @@ export function Profile() {
   const [toast, setToast] = useState<string | null>(null);
   const [csvOpen, setCsvOpen] = useState(false);
   const [csvImportFile, setCsvImportFile] = useState<File | null>(null);
+  const { confirm: askConfirm, node: confirmNode } = useConfirm();
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission | 'unsupported'>(() => notificationsPermission());
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -85,15 +95,39 @@ export function Profile() {
 
   const handlePush = async () => {
     setBusy('push');
-    await pushBackup();
+    const res = await pushBackup();
     setBusy(null);
-    const s = getSyncState();
-    if (s.status === 'error') showToast(s.lastError ? `Ошибка: ${s.lastError}` : 'Ошибка синхронизации');
+    if (res.conflict) {
+      const ok = await askConfirm({
+        title: 'Конфликт с Drive',
+        message: 'Бэкап в Drive был изменён на другом устройстве. Перезаписать облачные данные локальными? (Чтобы смержить — нажми Восстановить вместо этого)',
+        confirmLabel: 'Перезаписать',
+        danger: true,
+      });
+      if (ok) {
+        setBusy('push');
+        await pushBackup({ force: true });
+        setBusy(null);
+        const ss = getSyncState();
+        if (ss.status === 'error') showToast(`Ошибка: ${ss.lastError}`);
+        else showToast('Бэкап перезаписан');
+      } else {
+        showToast('Выгрузка отменена');
+      }
+      return;
+    }
+    const st = getSyncState();
+    if (st.status === 'error') showToast(st.lastError ? `Ошибка: ${st.lastError}` : 'Ошибка синхронизации');
     else showToast('Бэкап загружен в Drive');
   };
 
   const handlePull = async () => {
-    if (!confirm('Загрузить последний бэкап из Google Drive и объединить с локальными данными?')) return;
+    const ok = await askConfirm({
+      title: 'Восстановить из Drive?',
+      message: 'Загрузит последний бэкап из Google Drive и объединит с локальными данными. Записи с более свежим updated_at останутся как есть.',
+      confirmLabel: 'Восстановить',
+    });
+    if (!ok) return;
     setBusy('pull');
     try {
       const res = await pullBackup('merge');
@@ -111,7 +145,12 @@ export function Profile() {
   };
 
   const handleImport = async (file: File) => {
-    if (!confirm('Объединить данные из файла с текущими?')) return;
+    const ok = await askConfirm({
+      title: 'Импортировать JSON?',
+      message: 'Объединить данные из файла с текущими? Существующие записи с более свежим updated_at останутся как есть.',
+      confirmLabel: 'Импортировать',
+    });
+    if (!ok) return;
     setBusy('import');
     try {
       await importFromFile(file, 'merge');
@@ -120,6 +159,17 @@ export function Profile() {
       showToast(e instanceof Error ? e.message : 'Ошибка импорта');
     }
     setBusy(null);
+  };
+
+  const handleEnableNotifications = async () => {
+    const result = await requestNotifications();
+    setNotifPerm(result);
+    if (result === 'granted') {
+      showToast('Уведомления включены');
+      await checkUpcomingNotifications(import.meta.env.BASE_URL);
+    } else if (result === 'denied') {
+      showToast('Уведомления заблокированы в настройках браузера');
+    }
   };
 
   const exportCsv = async (kind: 'all' | 'watched' | 'lists' | 'notes') => {
@@ -294,6 +344,39 @@ export function Profile() {
         )}
       </section>
 
+      <section className="bg-bg-elevated border border-border rounded-lg p-4 mb-4">
+        <h3 className="text-2xs uppercase tracking-wider text-text-dim mb-3 flex items-center gap-1.5">
+          <Bell size={12} /> Уведомления о новых сериях
+        </h3>
+        {notifPerm === 'unsupported' ? (
+          <p className="text-2xs text-text-dim leading-snug">
+            Этот браузер не поддерживает уведомления.
+          </p>
+        ) : notifPerm === 'denied' ? (
+          <p className="text-2xs text-text-dim leading-snug">
+            Уведомления заблокированы. Разреши их в настройках браузера для этого сайта.
+          </p>
+        ) : notifPerm === 'granted' ? (
+          <p className="text-2xs text-success leading-snug">
+            Включены. Будем напоминать о сериях, выходящих сегодня/завтра, из watchlist и просмотренных сериалов.
+            Проверка не чаще раза в 6 часов.
+          </p>
+        ) : (
+          <>
+            <p className="text-2xs text-text-muted leading-snug mb-3">
+              Локальные уведомления о выходе новых серий из твоего watchlist (и просмотренных сериалов).
+              Без сервера — работают только пока приложение открыто или установлено как PWA.
+            </p>
+            <button
+              onClick={handleEnableNotifications}
+              className="w-full py-2.5 rounded-lg bg-accent/10 border border-accent/50 text-accent text-sm font-medium active:scale-95"
+            >
+              Включить уведомления
+            </button>
+          </>
+        )}
+      </section>
+
       <Stats />
 
       {csvImportFile && (
@@ -303,6 +386,8 @@ export function Profile() {
           onDone={(msg) => showToast(msg)}
         />
       )}
+
+      {confirmNode}
 
       {toast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-bg-elevated border border-accent/50 px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 z-50 shadow-xl">
