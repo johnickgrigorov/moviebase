@@ -23,6 +23,7 @@ const FORMAT_LABELS: Record<ImportFormat, string> = {
   'moviebase-lists': 'Moviebase — списки',
   letterboxd: 'Letterboxd',
   'imdb-ratings': 'IMDb',
+  trakt: 'Trakt.tv',
   unknown: 'Неизвестный формат',
 };
 

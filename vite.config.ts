@@ -13,7 +13,14 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: 'auto',
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
         includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'],
+        injectManifest: {
+          globPatterns: ['**/*.{js,css,html,svg,png,ico,webp}'],
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        },
         manifest: {
           name: 'Moviebase Personal',
           short_name: 'Moviebase',
@@ -30,29 +37,6 @@ export default defineConfig(({ mode }) => {
             { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
           ],
         },
-        workbox: {
-          globPatterns: ['**/*.{js,css,html,svg,png,ico,webp}'],
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/image\.tmdb\.org\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'tmdb-images',
-                expiration: { maxEntries: 1000, maxAgeSeconds: 60 * 60 * 24 * 30 },
-                cacheableResponse: { statuses: [0, 200] },
-              },
-            },
-            {
-              urlPattern: /^https:\/\/api\.themoviedb\.org\/.*/i,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'tmdb-api',
-                networkTimeoutSeconds: 5,
-                expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 },
-              },
-            },
-          ],
-        },
         devOptions: { enabled: false },
       }),
     ],
@@ -62,10 +46,13 @@ export default defineConfig(({ mode }) => {
       sourcemap: false,
       rollupOptions: {
         output: {
-          manualChunks: {
-            react: ['react', 'react-dom', 'react-router-dom'],
-            query: ['@tanstack/react-query'],
-            db: ['dexie', 'dexie-react-hooks'],
+          manualChunks(id: string) {
+            if (id.includes('node_modules')) {
+              if (/[\\/]react(-dom|-router-dom)?[\\/]/.test(id)) return 'react';
+              if (id.includes('@tanstack')) return 'query';
+              if (id.includes('dexie')) return 'db';
+            }
+            return undefined;
           },
         },
       },

@@ -126,12 +126,13 @@ export async function notifyUpcoming(items: UpcomingEpisode[], baseUrl: string):
     const key = `${it.tv_id}-${it.season}-${it.episode}`;
     if (shown[key]) continue;
     const title = `Новая серия: ${it.title}`;
-    const options: NotificationOptions & { data?: unknown } = {
+    const options: NotificationOptions & { actions?: { action: string; title: string }[]; data?: unknown } = {
       body: `S${it.season}E${it.episode} — ${it.air_date}`,
       icon: `${baseUrl}icon-192.png`,
       badge: `${baseUrl}icon-192.png`,
       tag: key,
-      data: { tv_id: it.tv_id },
+      data: { tv_id: it.tv_id, season: it.season, episode: it.episode, baseUrl },
+      actions: [{ action: 'mark-watched', title: 'Отметить' }],
     };
     try {
       if (reg) {

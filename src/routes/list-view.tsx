@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Trash2, Pencil, GripVertical, StickyNote } from 'lucide-react';
+import { Trash2, Pencil, GripVertical, StickyNote, Share2, Check, Copy } from 'lucide-react';
+import { encodeSharedList, shareUrl } from '../lib/list-share';
 import clsx from 'clsx';
 import { db, type CustomListItem } from '../lib/db';
 import { deleteList, renameList, removeFromList, reorderListItem, updateListItemNotes } from '../lib/mutations';
@@ -76,6 +77,8 @@ export function ListView() {
   const [description, setDescription] = useState('');
   const [noteItem, setNoteItem] = useState<CustomListItem | null>(null);
   const { confirm: askConfirm, node: confirmNode } = useConfirm();
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copyOk, setCopyOk] = useState(false);
 
   if (!listLoaded) {
     return (
@@ -166,10 +169,18 @@ export function ListView() {
         </div>
         {!editing && (
           <div className="flex gap-1">
-            <button onClick={startEdit} className="p-2 text-text-muted active:text-accent">
+            <button
+              onClick={() => setShareOpen(true)}
+              className="p-2 text-text-muted active:text-accent"
+              aria-label="Поделиться"
+              disabled={allItems.length === 0}
+            >
+              <Share2 size={16} />
+            </button>
+            <button onClick={startEdit} className="p-2 text-text-muted active:text-accent" aria-label="Редактировать">
               <Pencil size={16} />
             </button>
-            <button onClick={handleDelete} className="p-2 text-text-muted active:text-danger">
+            <button onClick={handleDelete} className="p-2 text-text-muted active:text-danger" aria-label="Удалить">
               <Trash2 size={16} />
             </button>
           </div>
@@ -199,6 +210,49 @@ export function ListView() {
       )}
 
       {confirmNode}
+
+      {shareOpen && (() => {
+        const token = encodeSharedList(list, allItems);
+        const url = shareUrl(token);
+        const isLong = url.length > 2000;
+        const handleCopy = async () => {
+          try { await navigator.clipboard.writeText(url); setCopyOk(true); setTimeout(() => setCopyOk(false), 1500); } catch { /* ignore */ }
+        };
+        const handleShare = async () => {
+          if (typeof navigator.share === 'function') {
+            try { await navigator.share({ title: list.name, text: `Подборка «${list.name}» — ${allItems.length} элементов`, url }); } catch { /* user cancelled */ }
+          } else {
+            await handleCopy();
+          }
+        };
+        return (
+          <div className="fixed inset-0 z-[200] bg-bg/85 backdrop-blur-sm flex items-end sm:items-center justify-center" onClick={() => setShareOpen(false)}>
+            <div className="w-full max-w-app bg-bg-elevated border-t border-border sm:border sm:rounded-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2"><Share2 size={18} className="text-accent" /><h3 className="display-title text-xl">Поделиться подборкой</h3></div>
+                <button onClick={() => setShareOpen(false)} className="text-text-muted active:text-text p-1" aria-label="Закрыть">×</button>
+              </div>
+              <p className="text-2xs text-text-muted leading-snug">
+                Ссылка содержит всю подборку («{list.name}», {allItems.length} элементов). Открывший её увидит превью и сможет импортировать как новую подборку себе.
+              </p>
+              {isLong && (
+                <p className="text-2xs text-danger leading-snug">
+                  ⚠ Ссылка длинная ({Math.round(url.length / 1024)} KB) — может не открыться в некоторых мессенджерах. Для больших подборок лучше передать JSON-файл (Экспорт в Профиле).
+                </p>
+              )}
+              <div className="text-2xs font-mono text-text-dim bg-bg p-2 rounded border border-border-subtle break-all max-h-32 overflow-y-auto">{url}</div>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={handleCopy} className="py-3 rounded-lg border border-border text-text text-sm active:border-accent flex items-center justify-center gap-2">
+                  {copyOk ? <><Check size={14} /> Скопировано</> : <><Copy size={14} /> Скопировать</>}
+                </button>
+                <button onClick={handleShare} className="py-3 rounded-lg bg-accent text-bg text-sm font-medium active:scale-95 flex items-center justify-center gap-2">
+                  <Share2 size={14} /> Поделиться
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {noteItem && (
         <NoteModal

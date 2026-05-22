@@ -303,7 +303,7 @@ export async function exportNotesCsv(): Promise<Blob> {
 
 // ===== Импорт =====
 
-export type ImportFormat = 'moviebase-all' | 'moviebase-watched' | 'moviebase-lists' | 'letterboxd' | 'imdb-ratings' | 'unknown';
+export type ImportFormat = 'moviebase-all' | 'moviebase-watched' | 'moviebase-lists' | 'letterboxd' | 'imdb-ratings' | 'trakt' | 'unknown';
 
 export interface ImportPreviewItem {
   status: 'watched' | 'watchlist' | 'list' | 'rating' | 'skip';
@@ -335,6 +335,10 @@ function detectFormat(headers: string[]): ImportFormat {
   if (h.includes('letterboxd uri') || (h.includes('name') && h.includes('year') && h.includes('date'))) return 'letterboxd';
   // IMDb: Const,Your Rating,Date Rated,Title,...
   if (h.includes('const') && (h.includes('your rating') || h.includes('title'))) return 'imdb-ratings';
+  // Trakt: имеет 'trakt id' или 'traktid' или 'tmdb id', плюс 'type' (movie/show/episode)
+  // или комбинация 'watched at' + 'type' + 'title'
+  if (h.includes('trakt id') || h.includes('traktid') ||
+      (h.includes('watched at') && h.includes('type') && h.includes('title'))) return 'trakt';
   return 'unknown';
 }
 
@@ -413,6 +417,35 @@ function parseRow(headers: string[], row: string[], format: ImportFormat): Impor
       match: 'pending',
     };
   }
+
+  if (format === 'trakt') {
+    const title = get(['Title']);
+    const year = get(['Year']);
+    const date = get(['Watched At', 'Watched at', 'Date']);
+    const type = get(['Type']).toLowerCase();           // movie | show | episode
+    const rating = get(['Rating']);                      // 1-10
+    const tmdbStr = get(['TMDb ID', 'TMDB ID', 'TMDb', 'tmdb_id']);
+    const traktId = get(['Trakt ID', 'TraktID']);
+    const imdbId = get(['IMDb ID', 'IMDB ID']);
+    if (!title) return null;
+    const tmdb_id = tmdbStr ? Number(tmdbStr) : undefined;
+    const isTv = type === 'show' || type === 'episode' || type.includes('series');
+    const noteParts: string[] = [];
+    if (traktId) noteParts.push(`Trakt: ${traktId}`);
+    if (imdbId) noteParts.push(`IMDb: ${imdbId}`);
+    return {
+      status: rating ? 'rating' : 'watched',
+      media_type: isTv ? 'tv' : 'movie',
+      title,
+      year,
+      tmdb_id: Number.isFinite(tmdb_id) ? tmdb_id : undefined,
+      rating: rating ? Number(rating) : undefined,
+      watched_at: parseDate(date) ?? undefined,
+      note: noteParts.length ? noteParts.join(' · ') : undefined,
+      match: tmdb_id && Number.isFinite(tmdb_id) ? 'id' : 'pending',
+    };
+  }
+
 
   // Moviebase форматы
   const status = get(['статус', 'status']);

@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { BarChart3, Film, Tv2, Star, Calendar, Repeat2 } from 'lucide-react';
+import { BarChart3, Film, Tv2, Star, Calendar, Repeat2, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { db } from '../lib/db';
-import { api } from '../lib/tmdb';
+import { api, imgUrl } from '../lib/tmdb';
 import { BackButton } from '../components/back-button';
 import { formatHours, plural } from '../lib/format';
 
@@ -130,6 +131,29 @@ export function Stats() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 8);
   }, [movieDetailsQs, tvDetailsQs, allGenres]);
+
+  // Топ-актёры: агрегируем cast из тех же деталей. Учитываем только верхние 10 ролей
+  // на фильм (главные), чтобы статисты не зашумляли. Лимит — 8 актёров.
+  const topActors = useMemo(() => {
+    const m = new Map<number, { id: number; name: string; profile_path: string | null; count: number }>();
+    const collectCast = (cast: { id: number; name: string; profile_path: string | null; order?: number }[]) => {
+      for (const c of cast.slice(0, 10)) {
+        const cur = m.get(c.id);
+        if (cur) cur.count++;
+        else m.set(c.id, { id: c.id, name: c.name, profile_path: c.profile_path, count: 1 });
+      }
+    };
+    for (const q of movieDetailsQs) {
+      if (q.data?.credits?.cast) collectCast(q.data.credits.cast);
+    }
+    for (const q of tvDetailsQs) {
+      if (q.data?.credits?.cast) collectCast(q.data.credits.cast);
+    }
+    return [...m.values()]
+      .filter((a) => a.count >= 2)  // отсеиваем разовых, иначе шум
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+  }, [movieDetailsQs, tvDetailsQs]);
 
   const detailsLoaded = movieDetailsQs.filter((q) => q.data).length + tvDetailsQs.filter((q) => q.data).length;
   const detailsTotal = movieDetailsQs.length + tvDetailsQs.length;
@@ -284,6 +308,45 @@ export function Stats() {
           </div>
         )}
       </section>
+
+      {/* Топ актёры */}
+      {topActors.length > 0 && (
+        <section className="px-4 mb-6">
+          <h3 className="text-2xs uppercase tracking-wider text-text-dim mb-3 flex items-center gap-1.5">
+            <Users size={12} /> Чаще всего в твоей коллекции
+          </h3>
+          <div className="bg-bg-elevated border border-border rounded-lg p-3">
+            <div className="grid grid-cols-4 gap-3">
+              {topActors.map((a) => (
+                <Link
+                  key={a.id}
+                  to={`/person/${a.id}`}
+                  className="flex flex-col items-center gap-1.5 active:opacity-70"
+                >
+                  <div className="w-14 h-14 rounded-full overflow-hidden bg-bg shrink-0">
+                    {a.profile_path ? (
+                      <img
+                        src={imgUrl(a.profile_path, 'w185')!}
+                        alt={a.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-text-dim text-lg">👤</div>
+                    )}
+                  </div>
+                  <div className="text-2xs text-text font-medium text-center leading-tight line-clamp-2">{a.name}</div>
+                  <div className="text-2xs text-accent font-mono">×{a.count}</div>
+                </Link>
+              ))}
+            </div>
+            {detailsLoading && (
+              <div className="text-2xs text-text-dim text-center mt-3">
+                подгружаются ещё детали — список расширится
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* TV прогресс */}
       {tvMeta.length > 0 && (
