@@ -73,7 +73,7 @@ export function DatePickerModal({ title, initialDate, onConfirm, onClose }: Date
             <Calendar size={18} className="text-accent" />
             <h3 className="display-title text-2xl">{title ?? 'Дата просмотра'}</h3>
           </div>
-          <button onClick={onClose} className="text-text-muted active:text-text p-1">
+          <button onClick={onClose} className="text-text-muted active:text-text p-1" aria-label="Закрыть">
             <X size={22} />
           </button>
         </div>

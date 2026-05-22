@@ -6,6 +6,7 @@ export function BackButton({ className }: { className?: string }) {
   return (
     <button
       onClick={() => navigate(-1)}
+      aria-label="Назад"
       className={
         'rounded-full bg-bg/70 backdrop-blur-md w-10 h-10 flex items-center justify-center active:scale-90 transition-transform ' +
         (className ?? '')

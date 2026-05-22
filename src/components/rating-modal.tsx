@@ -10,9 +10,9 @@ interface RatingModalProps {
 }
 
 export function RatingModal({ currentScore, onSubmit, onRemove, onClose }: RatingModalProps) {
-  const [hovered, setHovered] = useState<number | null>(null);
+  // hover на мобильных бесполезен — используем только selected. На десктопе тоже понятно.
   const [selected, setSelected] = useState<number>(currentScore ?? 0);
-  const display = hovered ?? selected;
+  const display = selected;
 
   return (
     <div
@@ -26,7 +26,7 @@ export function RatingModal({ currentScore, onSubmit, onRemove, onClose }: Ratin
       >
         <div className="flex items-center justify-between mb-5">
           <h3 className="display-title text-2xl">Ваша оценка</h3>
-          <button onClick={onClose} className="text-text-muted active:text-text">
+          <button onClick={onClose} className="text-text-muted active:text-text" aria-label="Закрыть">
             <X size={22} />
           </button>
         </div>
@@ -42,9 +42,8 @@ export function RatingModal({ currentScore, onSubmit, onRemove, onClose }: Ratin
           {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
             <button
               key={n}
-              onMouseEnter={() => setHovered(n)}
-              onMouseLeave={() => setHovered(null)}
               onClick={() => setSelected(n)}
+              aria-label={`Оценка ${n} из 10`}
               className={clsx(
                 'p-1 transition-transform active:scale-90',
                 n <= display ? 'text-accent' : 'text-text-dim',

@@ -78,7 +78,7 @@ export function ListPicker({ media_type, tmdb_id, title, poster_path, release_ye
             <ListPlus size={18} className="text-accent" />
             <h3 className="display-title text-2xl">Добавить в список</h3>
           </div>
-          <button onClick={onClose} className="text-text-muted active:text-text p-1">
+          <button onClick={onClose} className="text-text-muted active:text-text p-1" aria-label="Закрыть">
             <X size={22} />
           </button>
         </div>

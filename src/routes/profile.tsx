@@ -11,6 +11,10 @@ import {
   AlertCircle,
   BarChart3,
   Check,
+  FileText,
+  ListChecks,
+  StickyNote as StickyNoteIcon,
+  ChevronDown,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { db } from '../lib/db';
@@ -32,6 +36,13 @@ import {
   importFromFile,
   type SyncStatus,
 } from '../lib/sync';
+import {
+  exportAllCsv,
+  exportWatchedCsv,
+  exportListsCsv,
+  exportNotesCsv,
+} from '../lib/csv';
+import { CsvImportModal } from '../components/csv-import-modal';
 import { formatRelativeTime, plural, formatHours } from '../lib/format';
 
 export function Profile() {
@@ -39,6 +50,8 @@ export function Profile() {
   const [sync, setSync] = useState(getSyncState());
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [csvOpen, setCsvOpen] = useState(false);
+  const [csvImportFile, setCsvImportFile] = useState<File | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -57,7 +70,6 @@ export function Profile() {
     toastTimer.current = setTimeout(() => setToast(null), 2500);
   };
 
-  // Cleanup таймера при размонтировании
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
   const handleSignIn = async () => {
@@ -94,12 +106,7 @@ export function Profile() {
 
   const handleExport = async () => {
     const blob = await exportToFile();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `moviebase-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    saveBlob(blob, `moviebase-${todayStamp()}.json`);
     showToast('Файл сохранён');
   };
 
@@ -113,6 +120,19 @@ export function Profile() {
       showToast(e instanceof Error ? e.message : 'Ошибка импорта');
     }
     setBusy(null);
+  };
+
+  const exportCsv = async (kind: 'all' | 'watched' | 'lists' | 'notes') => {
+    const builders = {
+      all: { fn: exportAllCsv, name: 'все' },
+      watched: { fn: exportWatchedCsv, name: 'просмотрено' },
+      lists: { fn: exportListsCsv, name: 'списки' },
+      notes: { fn: exportNotesCsv, name: 'заметки' },
+    };
+    const b = builders[kind];
+    const blob = await b.fn();
+    saveBlob(blob, `moviebase-${todayStamp()}-${b.name}.csv`);
+    showToast('CSV скачан');
   };
 
   return (
@@ -144,7 +164,7 @@ export function Profile() {
               <div className="font-medium truncate">{auth.user?.name ?? '—'}</div>
               <div className="text-2xs text-text-muted truncate">{auth.user?.email ?? ''}</div>
             </div>
-            <button onClick={signOut} className="text-text-muted active:text-danger p-2">
+            <button onClick={signOut} className="text-text-muted active:text-danger p-2" aria-label="Выйти">
               <LogOut size={18} />
             </button>
           </div>
@@ -192,7 +212,7 @@ export function Profile() {
       )}
 
       <section className="bg-bg-elevated border border-border rounded-lg p-4 mb-4">
-        <h3 className="text-2xs uppercase tracking-wider text-text-dim mb-3">Ручной бэкап</h3>
+        <h3 className="text-2xs uppercase tracking-wider text-text-dim mb-3">Ручной бэкап JSON</h3>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={handleExport}
@@ -216,7 +236,73 @@ export function Profile() {
         </div>
       </section>
 
+      <section className="bg-bg-elevated border border-border rounded-lg p-4 mb-4">
+        <button
+          onClick={() => setCsvOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+          aria-expanded={csvOpen}
+        >
+          <h3 className="text-2xs uppercase tracking-wider text-text-dim flex items-center gap-1.5">
+            <FileText size={12} /> CSV — для Excel / переноса
+          </h3>
+          <ChevronDown size={14} className={clsx('text-text-dim transition-transform', csvOpen && 'rotate-180')} />
+        </button>
+        {csvOpen && (
+          <div className="mt-3 space-y-3">
+            <p className="text-2xs text-text-dim leading-snug">
+              CSV — табличный формат, открывается в Excel / Numbers / Google Sheets. Подходит для переноса данных,
+              ручного редактирования или импорта из других сервисов (Letterboxd, IMDb).
+            </p>
+
+            <div className="grid grid-cols-2 gap-2">
+              <CsvButton
+                label="Всё (одним файлом)"
+                icon={<FileText size={14} />}
+                onClick={() => void exportCsv('all')}
+              />
+              <CsvButton
+                label="Просмотренное"
+                icon={<Check size={14} />}
+                onClick={() => void exportCsv('watched')}
+              />
+              <CsvButton
+                label="Списки"
+                icon={<ListChecks size={14} />}
+                onClick={() => void exportCsv('lists')}
+              />
+              <CsvButton
+                label="Заметки"
+                icon={<StickyNoteIcon size={14} />}
+                onClick={() => void exportCsv('notes')}
+              />
+            </div>
+
+            <label className="flex items-center justify-center gap-2 py-2.5 bg-accent/10 border border-accent/40 rounded text-sm text-accent active:scale-95 cursor-pointer">
+              <Upload size={14} /> Импорт CSV…
+              <input
+                type="file"
+                accept="text/csv,.csv,.tsv"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) setCsvImportFile(f);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+          </div>
+        )}
+      </section>
+
       <Stats />
+
+      {csvImportFile && (
+        <CsvImportModal
+          file={csvImportFile}
+          onClose={() => setCsvImportFile(null)}
+          onDone={(msg) => showToast(msg)}
+        />
+      )}
 
       {toast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-bg-elevated border border-accent/50 px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 z-50 shadow-xl">
@@ -226,6 +312,31 @@ export function Profile() {
       )}
     </div>
   );
+}
+
+function CsvButton({ label, icon, onClick }: { label: string; icon: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center justify-center gap-1.5 py-2.5 bg-bg border border-border rounded text-2xs text-text active:border-accent active:text-accent"
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function todayStamp(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function saveBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function SyncStatusIcon({ status }: { status: SyncStatus }) {

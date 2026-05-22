@@ -175,6 +175,10 @@ async function getLocalLastUpdated(): Promise<number> {
     const last = (await t.orderBy('updated_at').last()) as { updated_at?: number } | undefined;
     if (last && (last.updated_at ?? 0) > max) max = last.updated_at!;
   }
+  // Учитываем удаления (tombstones) — иначе сессия с одними удалениями не вытянет последнее
+  // обновление и initialSync может затереть локальные удаления облачными данными
+  const lastTomb = (await db.tombstones.orderBy('deleted_at').last()) as { deleted_at?: number } | undefined;
+  if (lastTomb && (lastTomb.deleted_at ?? 0) > max) max = lastTomb.deleted_at!;
   return max;
 }
 
@@ -190,4 +194,26 @@ if (typeof window !== 'undefined') {
     if (state.status === 'offline' || state.status === 'dirty') scheduleSync();
   });
   window.addEventListener('offline', () => setState({ status: 'offline' }));
+}
+
+/** Force-flush dirty state when the tab is about to be hidden/closed.
+ *  Чтобы не терять незасинканные изменения, если пользователь закрыл вкладку
+ *  раньше истечения 30-секундного debounce. Вызывает pushBackup без await — браузер
+ *  попытается завершить запрос best-effort. */
+export function flushOnUnload(): void {
+  if (typeof window === 'undefined') return;
+  const tryFlush = () => {
+    if (state.status === 'dirty' && state.autoSync && isGoogleConfigured() && getAuth() && navigator.onLine) {
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        pendingTimer = null;
+      }
+      void pushBackup();
+    }
+  };
+  // visibilitychange срабатывает надёжнее, чем beforeunload, особенно на iOS
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') tryFlush();
+  });
+  window.addEventListener('pagehide', tryFlush);
 }
