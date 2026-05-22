@@ -9,14 +9,50 @@ import { Poster } from '../components/poster';
 import { BackButton } from '../components/back-button';
 import { NoteModal } from '../components/note-modal';
 
+type MediaFilter = 'all' | 'movie' | 'tv';
+
+function MediaFilterBar({ value, onChange, counts }: {
+  value: MediaFilter;
+  onChange: (v: MediaFilter) => void;
+  counts: { all: number; movie: number; tv: number };
+}) {
+  return (
+    <div className="flex gap-2 mb-4">
+      {(['all', 'movie', 'tv'] as MediaFilter[]).map((f) => {
+        const labels: Record<MediaFilter, string> = { all: 'Все', movie: 'Фильмы', tv: 'Сериалы' };
+        const count = counts[f];
+        return (
+          <button
+            key={f}
+            onClick={() => onChange(f)}
+            className={clsx(
+              'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors',
+              value === f
+                ? 'bg-accent/20 text-accent border border-accent/40'
+                : 'bg-bg-elevated text-text-muted border border-border',
+            )}
+          >
+            {labels[f]}
+            <span className={clsx(
+              'text-2xs rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center',
+              value === f ? 'bg-accent/30' : 'bg-bg text-text-dim',
+            )}>{count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ListView() {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
+  const [filter, setFilter] = useState<MediaFilter>('all');
   const list = useLiveQuery(
     async () => (id ? await db.lists.get(id) : undefined),
     [id],
   );
-  const items: CustomListItem[] =
+  const allItems: CustomListItem[] =
     useLiveQuery<CustomListItem[]>(
       async () => {
         if (!id) return [];
@@ -24,6 +60,10 @@ export function ListView() {
       },
       [id],
     ) ?? [];
+
+  const movies = allItems.filter((it) => it.media_type === 'movie');
+  const tv = allItems.filter((it) => it.media_type === 'tv');
+  const items = filter === 'all' ? allItems : filter === 'movie' ? movies : tv;
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
@@ -89,7 +129,7 @@ export function ListView() {
               <h1 className="display-title text-2xl leading-tight">{list.name}</h1>
               {list.description && <div className="text-xs text-text-muted mt-1">{list.description}</div>}
               <div className="text-2xs text-text-dim mt-1">
-                {items.length} элементов{items.length > 1 ? ' · потяни за полоску, чтобы переставить' : ''}
+                {allItems.length} элементов{allItems.length > 1 ? ' · потяни за полоску, чтобы переставить' : ''}
               </div>
             </>
           )}
@@ -106,13 +146,26 @@ export function ListView() {
         )}
       </div>
 
-      {items.length === 0 ? (
+      {allItems.length === 0 ? (
         <div className="py-16 text-center text-text-dim text-sm">
           Список пуст
           <div className="text-2xs mt-1">Добавляй фильмы и сериалы кнопкой «В подборку» на их странице</div>
         </div>
       ) : (
-        <DraggableGrid items={items} listId={list.id} onNoteEdit={setNoteItem} />
+        <>
+          {(movies.length > 0 && tv.length > 0) && (
+            <MediaFilterBar
+              value={filter}
+              onChange={setFilter}
+              counts={{ all: allItems.length, movie: movies.length, tv: tv.length }}
+            />
+          )}
+          {items.length === 0 ? (
+            <div className="py-8 text-center text-text-dim text-sm">Ничего не найдено</div>
+          ) : (
+            <DraggableGrid items={items} listId={list.id} onNoteEdit={setNoteItem} />
+          )}
+        </>
       )}
 
       {noteItem && (
