@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { usePersistedState } from '../hooks/use-persisted-state';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus, ChevronRight, ListPlus, StickyNote } from 'lucide-react';
 import clsx from 'clsx';
@@ -109,7 +110,7 @@ function MediaFilterBar({ value, onChange, counts }: {
 
 function WatchlistTab() {
   const [filter, setFilter] = useState<MediaFilter>('all');
-  const [sort, setSort] = useState<SortKey>('date_desc');
+  const [sort, setSort] = usePersistedState<SortKey>('mb-sort-watchlist', 'date_desc');
   const all = useLiveQuery(() => db.watchlist.orderBy('added_at').reverse().toArray()) ?? [];
   const ratings = useLiveQuery(() => db.ratings.toArray()) ?? [];
   const ratingByKey = new Map(ratings.map((r) => [`${r.media_type}-${r.tmdb_id}`, r.score]));
@@ -171,7 +172,7 @@ function WatchlistTab() {
 
 function WatchedTab() {
   const [filter, setFilter] = useState<MediaFilter>('all');
-  const [sort, setSort] = useState<SortKey>('date_desc');
+  const [sort, setSort] = usePersistedState<SortKey>('mb-sort-watched', 'date_desc');
   const moviesRaw = useLiveQuery(() => db.watchedMovies.orderBy('watched_at').reverse().toArray()) ?? [];
   const ratings = useLiveQuery(() => db.ratings.toArray()) ?? [];
   const ratingByKey = new Map(ratings.map((r) => [`${r.media_type}-${r.tmdb_id}`, r.score]));

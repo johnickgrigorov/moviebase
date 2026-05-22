@@ -32,6 +32,34 @@
     --theme-color: #0a0908;
   }
 
+  /* === AMOLED тема — чистый чёрный для OLED-экранов === */
+  [data-theme="amoled"] {
+    color-scheme: dark;
+
+    --bg: 0 0 0;                  /* #000 — чистый чёрный, экономия батареи на OLED */
+    --bg-elevated: 13 12 11;      /* #0d0c0b — почти чёрный для elevation */
+    --bg-hover: 23 21 19;
+    --bg-card: 8 7 6;
+
+    --border: 36 32 28;
+    --border-subtle: 23 21 19;
+
+    --text: 245 241 234;
+    --text-muted: 160 151 138;
+    --text-dim: 107 99 88;
+
+    --accent: 249 168 38;
+    --accent-dim: 201 133 29;
+    --accent-bg: 58 40 16;
+
+    --success: 124 199 122;
+    --danger: 224 123 106;
+
+    --grain-opacity: 0;           /* без шума — на чистом чёрном смотрится грязно */
+    --scrollbar-thumb: 36 32 28;
+    --theme-color: #000000;
+  }
+
   /* === Светлая тема === */
   [data-theme="light"] {
     color-scheme: light;

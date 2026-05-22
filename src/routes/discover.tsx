@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { usePersistedState } from '../hooks/use-persisted-state';
 import { ChevronDown, Filter, Loader2, Sparkles } from 'lucide-react';
 import clsx from 'clsx';
 import {
@@ -24,10 +25,10 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 50 }, (_, i) => CURRENT_YEAR - i);
 
 export function Discover() {
-  const [kind, setKind] = useState<Kind>('movie');
-  const [sort, setSort] = useState<DiscoverSort>('popularity.desc');
-  const [genreId, setGenreId] = useState<number | undefined>(undefined);
-  const [year, setYear] = useState<number | undefined>(undefined);
+  const [kind, setKind] = usePersistedState<Kind>('mb-discover-kind', 'movie');
+  const [sort, setSort] = usePersistedState<DiscoverSort>('mb-discover-sort', 'popularity.desc');
+  const [genreId, setGenreId] = usePersistedState<number | undefined>('mb-discover-genre', undefined);
+  const [year, setYear] = usePersistedState<number | undefined>('mb-discover-year', undefined);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const genres = useQuery({

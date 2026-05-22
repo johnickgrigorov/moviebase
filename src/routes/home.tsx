@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { usePersistedState } from '../hooks/use-persisted-state';
 import { useQuery } from '@tanstack/react-query';
 import { Sparkles, SlidersHorizontal, X } from 'lucide-react';
 import clsx from 'clsx';
@@ -22,12 +23,12 @@ const YEARS = Array.from({ length: 50 }, (_, i) => CURRENT_YEAR - i);
 const RATINGS = [6, 6.5, 7, 7.5, 8, 8.5, 9];
 
 export function Home() {
-  const [kind, setKind] = useState<Kind>('all');
+  const [kind, setKind] = usePersistedState<Kind>('mb-home-kind', 'all');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [sort, setSort] = useState<DiscoverSort>('popularity.desc');
-  const [genreId, setGenreId] = useState<number | undefined>(undefined);
-  const [year, setYear] = useState<number | undefined>(undefined);
-  const [minRating, setMinRating] = useState<number | undefined>(undefined);
+  const [sort, setSort] = usePersistedState<DiscoverSort>('mb-home-sort', 'popularity.desc');
+  const [genreId, setGenreId] = usePersistedState<number | undefined>('mb-home-genre', undefined);
+  const [year, setYear] = usePersistedState<number | undefined>('mb-home-year', undefined);
+  const [minRating, setMinRating] = usePersistedState<number | undefined>('mb-home-min-rating', undefined);
 
   const filtersActive = kind !== 'all' || genreId !== undefined || year !== undefined || minRating !== undefined || sort !== 'popularity.desc';
 
@@ -48,13 +49,13 @@ export function Home() {
     queryKey: ['discover', 'movie', sort, genreId, year, minRating],
     queryFn: () => api.discoverMovies({ sort_by: sort, genre_id: genreId, year, minRating }),
     enabled: filtersActive && kind !== 'tv',
-    placeholderData: (prev: any) => prev,
+    placeholderData: (prev) => prev,
   });
   const discoverTv = useQuery({
     queryKey: ['discover', 'tv', sort, genreId, year, minRating],
     queryFn: () => api.discoverTv({ sort_by: sort, genre_id: genreId, year, minRating }),
     enabled: filtersActive && kind !== 'movie',
-    placeholderData: (prev: any) => prev,
+    placeholderData: (prev) => prev,
   });
 
   const trending = useQuery({ queryKey: ['trending', 'week'], queryFn: () => api.trending('week'), enabled: !filtersActive });

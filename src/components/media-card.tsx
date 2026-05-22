@@ -14,7 +14,8 @@ interface MediaCardProps {
 export function MediaCard({ media, className }: MediaCardProps) {
   const type = mediaType(media);
   const inWatchlist = useIsInWatchlist(type, media.id);
-  const watched = useIsMovieWatched(type === 'movie' ? media.id : undefined);
+  const watchedRaw = useIsMovieWatched(type === 'movie' ? media.id : -1);
+  const watched = type === 'movie' && watchedRaw;
   const rating = useMediaRating(type, media.id);
 
   return (

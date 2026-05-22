@@ -14,6 +14,7 @@ import { TvDetails } from './routes/tv-details';
 import { SeasonDetails } from './routes/season-details';
 import { ListView } from './routes/list-view';
 import { PersonDetails } from './routes/person-details';
+import { Stats } from './routes/stats';
 import { TmdbTokenWarning } from './components/tmdb-token-warning';
 
 export default function App() {
@@ -23,7 +24,8 @@ export default function App() {
     location.pathname.startsWith('/movie/') ||
     location.pathname.startsWith('/tv/') ||
     location.pathname.startsWith('/list/') ||
-    location.pathname.startsWith('/person/');
+    location.pathname.startsWith('/person/') ||
+    location.pathname === '/stats';
 
   // Pull-to-refresh: инвалидируем все React Query запросы — данные сами перетянутся
   const ptr = usePullToRefresh(() => qc.invalidateQueries());
@@ -43,6 +45,7 @@ export default function App() {
         <Route path="/tv/:id/season/:season" element={<SeasonDetails />} />
         <Route path="/list/:id" element={<ListView />} />
         <Route path="/person/:id" element={<PersonDetails />} />
+        <Route path="/stats" element={<Stats />} />
       </Routes>
       {!isDetailPage && (
         <>

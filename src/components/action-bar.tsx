@@ -27,7 +27,10 @@ interface ActionBarProps {
 
 export function ActionBar({ media_type, tmdb_id, title, poster_path, release_year, onWatchedClick }: ActionBarProps) {
   const inWatchlist = useIsInWatchlist(media_type, tmdb_id);
-  const watched = useIsMovieWatched(media_type === 'movie' ? tmdb_id : undefined);
+  // Хук всегда вызывается (rules of hooks), но запрашиваем -1 для TV — никогда не найдётся.
+  // Это безопасно (просто вернёт undefined → false) и убирает грязный undefined-каст.
+  const watchedRaw = useIsMovieWatched(media_type === 'movie' ? tmdb_id : -1);
+  const watched = media_type === 'movie' && watchedRaw;
   const rating = useMediaRating(media_type, tmdb_id);
   // Используем композитный индекс [media_type+tmdb_id] (Dexie v3) — точечный запрос
   // вместо фильтра по всем listItems. Реактивность ограничена ключом этого медиа.

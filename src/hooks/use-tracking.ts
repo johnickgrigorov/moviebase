@@ -7,11 +7,8 @@ export function useIsInWatchlist(media_type: MediaType, tmdb_id: number): boolea
   return !!res;
 }
 
-export function useIsMovieWatched(tmdb_id: number | undefined): boolean {
-  const res = useLiveQuery(
-    async () => (tmdb_id === undefined ? undefined : db.watchedMovies.get(tmdb_id)),
-    [tmdb_id],
-  );
+export function useIsMovieWatched(tmdb_id: number): boolean {
+  const res = useLiveQuery(() => db.watchedMovies.get(tmdb_id), [tmdb_id]);
   return !!res;
 }
 
@@ -31,4 +28,20 @@ export function useWatchedEpisodesInSeason(tv_id: number, season_number: number)
 export function useWatchedEpisodeCount(tv_id: number): number {
   const count = useLiveQuery(() => db.watchedEpisodes.where('tv_id').equals(tv_id).count(), [tv_id]);
   return count ?? 0;
+}
+
+export function useRewatchCount(media_type: MediaType, tmdb_id: number): number {
+  const count = useLiveQuery(
+    () => db.rewatches.where('[media_type+tmdb_id]').equals([media_type, tmdb_id]).count(),
+    [media_type, tmdb_id],
+  );
+  return count ?? 0;
+}
+
+export function useRewatches(media_type: MediaType, tmdb_id: number) {
+  const list = useLiveQuery(
+    () => db.rewatches.where('[media_type+tmdb_id]').equals([media_type, tmdb_id]).reverse().sortBy('watched_at'),
+    [media_type, tmdb_id],
+  );
+  return list ?? [];
 }

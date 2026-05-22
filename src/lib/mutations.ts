@@ -10,6 +10,7 @@ import {
   type CustomList,
   type CustomListItem,
   type TvProgressMeta,
+  type Rewatch,
 } from './db';
 import { markDirty } from './sync';
 import type { MediaType } from './tmdb';
@@ -304,5 +305,50 @@ export async function reorderListItem(list_id: string, item_key: string, new_ind
   });
   if (updates.length === 0) return;
   await db.listItems.bulkPut(updates);
+  markDirty();
+}
+
+
+// === Rewatch (повторные просмотры) ===
+
+export async function addRewatch(
+  m: { media_type: import('./tmdb').MediaType; tmdb_id: number; title: string; poster_path: string | null; release_year: string },
+  watched_at: number = now(),
+  note = '',
+): Promise<Rewatch> {
+  const t = now();
+  const r: Rewatch = {
+    key: genId(),
+    media_type: m.media_type,
+    tmdb_id: m.tmdb_id,
+    title: m.title,
+    poster_path: m.poster_path,
+    release_year: m.release_year,
+    watched_at,
+    note: note || undefined,
+    created_at: t,
+    updated_at: t,
+  };
+  await db.rewatches.put(r);
+  markDirty();
+  return r;
+}
+
+export async function removeRewatch(key: string): Promise<void> {
+  const t = now();
+  await db.rewatches.delete(key);
+  await db.tombstones.put({
+    key: k.tombstone('rewatches', key),
+    table: 'rewatches',
+    record_key: key,
+    deleted_at: t,
+  });
+  markDirty();
+}
+
+export async function updateRewatchNote(key: string, note: string): Promise<void> {
+  const existing = await db.rewatches.get(key);
+  if (!existing) return;
+  await db.rewatches.put({ ...existing, note: note || undefined, updated_at: now() });
   markDirty();
 }

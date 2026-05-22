@@ -26,13 +26,13 @@
       (function () {
         try {
           var saved = localStorage.getItem('mb-theme');
-          var choice = (saved === 'dark' || saved === 'light' || saved === 'auto') ? saved : 'auto';
+          var choice = (saved === 'dark' || saved === 'light' || saved === 'auto' || saved === 'amoled') ? saved : 'auto';
           var resolved = (choice === 'auto')
             ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
             : choice;
           document.documentElement.setAttribute('data-theme', resolved);
           var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute('content', resolved === 'light' ? '#fbf8f3' : '#0a0908');
+          if (meta) meta.setAttribute('content', resolved === 'light' ? '#fbf8f3' : resolved === 'amoled' ? '#000000' : '#0a0908');
         } catch (e) { /* ignore */ }
       })();
     </script>

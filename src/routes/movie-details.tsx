@@ -6,10 +6,15 @@ import { api, imgUrl } from '../lib/tmdb';
 import { formatRuntime, formatDate, formatVote } from '../lib/format';
 import { Poster } from '../components/poster';
 import { ActionBar } from '../components/action-bar';
-import { markMovieWatched } from '../lib/mutations';
+import { markMovieWatched, addRewatch, removeRewatch } from '../lib/mutations';
+import { useIsMovieWatched } from '../hooks/use-tracking';
+import { useRewatches } from '../hooks/use-tracking';
+import { formatRelativeTime } from '../lib/format';
+import { Repeat2, Trash2 } from 'lucide-react';
 import { BackButton } from '../components/back-button';
 import { DatePickerModal } from '../components/date-picker-modal';
 import { MediaRow } from '../components/media-row';
+import { MediaDetailsSkeleton } from '../components/skeleton';
 
 export function MovieDetails() {
   const { id } = useParams<{ id: string }>();
@@ -21,14 +26,12 @@ export function MovieDetails() {
   });
 
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [rewatchPickerOpen, setRewatchPickerOpen] = useState(false);
+  const watched = useIsMovieWatched(tmdbId);
+  const rewatches = useRewatches('movie', tmdbId);
 
   if (isLoading || !data) {
-    return (
-      <div className="pt-6 px-4">
-        <BackButton />
-        <div className="mt-8 text-center text-text-dim">Загрузка…</div>
-      </div>
-    );
+    return <MediaDetailsSkeleton />;
   }
 
   const backdrop = imgUrl(data.backdrop_path, 'w500');
@@ -101,6 +104,67 @@ export function MovieDetails() {
           }}
           onClose={() => setDatePickerOpen(false)}
         />
+      )}
+
+      {rewatchPickerOpen && (
+        <DatePickerModal
+          title="Повторный просмотр"
+          onConfirm={async (ts: number) => {
+            await addRewatch(
+              { media_type: 'movie', tmdb_id: data.id, title: data.title, poster_path: data.poster_path, release_year: year },
+              ts,
+            );
+          }}
+          onClose={() => setRewatchPickerOpen(false)}
+        />
+      )}
+
+      {(watched || rewatches.length > 0) && (
+        <section className="mt-6 px-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-2xs uppercase tracking-wider text-text-dim flex items-center gap-1.5">
+              <Repeat2 size={12} /> Повторные просмотры
+              {rewatches.length > 0 && (
+                <span className="text-accent">· {rewatches.length}</span>
+              )}
+            </h3>
+            <button
+              onClick={() => setRewatchPickerOpen(true)}
+              className="text-2xs px-2.5 py-1 rounded-full border border-accent/40 bg-accent/10 text-accent active:scale-95"
+            >
+              + Смотрел снова
+            </button>
+          </div>
+          {rewatches.length === 0 ? (
+            <p className="text-2xs text-text-dim">
+              Просмотрено{' '}
+              {watched ? 'один раз' : ''}. Нажми «Смотрел снова» при повторном просмотре —
+              сохранится с отдельной датой.
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {rewatches.map((r) => (
+                <div
+                  key={r.key}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-bg-elevated border border-border-subtle"
+                >
+                  <Repeat2 size={12} className="text-accent shrink-0" />
+                  <div className="flex-1 text-2xs">
+                    <span className="text-text">{new Date(r.watched_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                    <span className="text-text-dim"> · {formatRelativeTime(r.watched_at)}</span>
+                  </div>
+                  <button
+                    onClick={() => removeRewatch(r.key)}
+                    className="text-text-muted active:text-danger p-1"
+                    aria-label="Удалить повтор"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {data.overview && (

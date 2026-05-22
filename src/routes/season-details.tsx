@@ -12,6 +12,7 @@ import {
 } from '../lib/mutations';
 import { formatDate, formatRuntime, plural } from '../lib/format';
 import { BackButton } from '../components/back-button';
+import { SeasonSkeleton } from '../components/skeleton';
 
 export function SeasonDetails() {
   const { id, season } = useParams<{ id: string; season: string }>();
@@ -27,12 +28,7 @@ export function SeasonDetails() {
   const watched = useWatchedEpisodesInSeason(tvId, seasonNum);
 
   if (isLoading || !data) {
-    return (
-      <div className="pt-6 px-4">
-        <BackButton />
-        <div className="mt-8 text-center text-text-dim">Загрузка…</div>
-      </div>
-    );
+    return <SeasonSkeleton />;
   }
 
   const total = data.episodes.length;

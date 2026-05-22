@@ -4,6 +4,7 @@ import { api, imgUrl, type PersonCastItem } from '../lib/tmdb';
 import { BackButton } from '../components/back-button';
 import { MediaCard } from '../components/media-card';
 import { formatDate } from '../lib/format';
+import { PersonSkeleton } from '../components/skeleton';
 
 export function PersonDetails() {
   const { id } = useParams<{ id: string }>();
@@ -22,12 +23,7 @@ export function PersonDetails() {
   });
 
   if (loadingPerson || !person) {
-    return (
-      <div className="pt-6 px-4">
-        <BackButton />
-        <div className="mt-8 text-center text-text-dim">Загрузка…</div>
-      </div>
-    );
+    return <PersonSkeleton />;
   }
 
   const photo = imgUrl(person.profile_path, 'w300');

@@ -4,15 +4,15 @@
  * <meta name="theme-color">.
  */
 
-export type ThemeChoice = 'auto' | 'dark' | 'light';
-export type ResolvedTheme = 'dark' | 'light';
+export type ThemeChoice = 'auto' | 'dark' | 'light' | 'amoled';
+export type ResolvedTheme = 'dark' | 'light' | 'amoled';
 
 const STORAGE_KEY = 'mb-theme';
 
 function readChoice(): ThemeChoice {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    if (v === 'dark' || v === 'light' || v === 'auto') return v;
+    if (v === 'dark' || v === 'light' || v === 'auto' || v === 'amoled') return v;
   } catch { /* ignore */ }
   return 'auto';
 }
@@ -27,7 +27,7 @@ function systemPrefersDark(): boolean {
 }
 
 function resolve(choice: ThemeChoice): ResolvedTheme {
-  if (choice === 'dark' || choice === 'light') return choice;
+  if (choice === 'dark' || choice === 'light' || choice === 'amoled') return choice;
   return systemPrefersDark() ? 'dark' : 'light';
 }
 
@@ -37,7 +37,8 @@ function apply(resolved: ResolvedTheme): void {
   // Обновляем <meta name="theme-color"> чтобы статус-бар браузера совпадал с темой
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (meta) {
-    meta.content = resolved === 'light' ? '#fbf8f3' : '#0a0908';
+    const color = resolved === 'light' ? '#fbf8f3' : resolved === 'amoled' ? '#000000' : '#0a0908';
+    meta.content = color;
   }
 }
 

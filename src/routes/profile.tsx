@@ -356,11 +356,12 @@ export function Profile() {
 
       <section className="bg-bg-elevated border border-border rounded-lg p-4 mb-4">
         <h3 className="text-2xs uppercase tracking-wider text-text-dim mb-3">Тема</h3>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {([
             { v: 'auto' as ThemeChoice, label: 'Система', icon: <Monitor size={14} /> },
-            { v: 'dark' as ThemeChoice, label: 'Тёмная', icon: <Moon size={14} /> },
             { v: 'light' as ThemeChoice, label: 'Светлая', icon: <Sun size={14} /> },
+            { v: 'dark' as ThemeChoice, label: 'Тёмная', icon: <Moon size={14} /> },
+            { v: 'amoled' as ThemeChoice, label: 'AMOLED', icon: <Moon size={14} fill='currentColor' /> },
           ]).map((opt) => (
             <button
               key={opt.v}
@@ -380,7 +381,12 @@ export function Profile() {
         </div>
         {themeState.choice === 'auto' && (
           <p className="text-2xs text-text-dim mt-2 text-center">
-            Сейчас: {themeState.resolved === 'dark' ? 'тёмная' : 'светлая'}
+            Сейчас: {themeState.resolved === 'dark' ? 'тёмная' : themeState.resolved === 'amoled' ? 'AMOLED' : 'светлая'}
+          </p>
+        )}
+        {themeState.choice === 'amoled' && (
+          <p className="text-2xs text-text-dim mt-2 text-center">
+            Чистый чёрный для OLED — без шума, без переходов.
           </p>
         )}
       </section>
@@ -483,6 +489,8 @@ function statusLabel(status: SyncStatus): string {
   }[status];
 }
 
+import { Link } from 'react-router-dom';
+
 function Stats() {
   const watchedMovies = useLiveQuery(() => db.watchedMovies.count()) ?? 0;
   const watchedEps = useLiveQuery(() => db.watchedEpisodes.count()) ?? 0;
@@ -494,9 +502,12 @@ function Stats() {
 
   return (
     <section className="bg-bg-elevated border border-border rounded-lg p-4 mb-4">
-      <h3 className="text-2xs uppercase tracking-wider text-text-dim mb-3 flex items-center gap-1.5">
-        <BarChart3 size={12} /> Статистика
-      </h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-2xs uppercase tracking-wider text-text-dim flex items-center gap-1.5">
+          <BarChart3 size={12} /> Статистика
+        </h3>
+        <Link to="/stats" className="text-2xs text-accent active:scale-95">Подробнее →</Link>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <MiniStat value={String(watchedMovies)} label={plural(watchedMovies, 'фильм', 'фильма', 'фильмов')} />
         <MiniStat value={String(watchedEps)} label={plural(watchedEps, 'эпизод', 'эпизода', 'эпизодов')} />

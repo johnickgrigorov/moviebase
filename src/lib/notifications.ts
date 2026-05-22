@@ -95,34 +95,60 @@ export async function findUpcomingEpisodes(): Promise<UpcomingEpisode[]> {
   return upcoming;
 }
 
+async function getSwRegistration(): Promise<ServiceWorkerRegistration | null> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null;
+  try {
+    // ServiceWorker регистрируется workbox через vite-plugin-pwa; ждём ready.
+    const reg = await navigator.serviceWorker.ready;
+    return reg ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Показать локальные уведомления для найденных серий. Не показывает уже показанные.
+ * Показать локальные уведомления для найденных серий через ServiceWorker
+ * (registration.showNotification — единственный путь, работающий в iOS PWA standalone).
+ * Fallback на new Notification если SW недоступен (десктоп без PWA).
  */
-export function notifyUpcoming(items: UpcomingEpisode[], baseUrl: string): void {
+export async function notifyUpcoming(items: UpcomingEpisode[], baseUrl: string): Promise<void> {
   if (!isNotificationsSupported() || Notification.permission !== 'granted') return;
   const shown = readShown();
   const now = Date.now();
-  // Очистим старые записи (>10 дней)
+  // Чистим старые записи (>10 дней)
   for (const k of Object.keys(shown)) {
     if (now - shown[k]! > 10 * 24 * 60 * 60 * 1000) delete shown[k];
   }
+
+  const reg = await getSwRegistration();
+
   for (const it of items) {
     const key = `${it.tv_id}-${it.season}-${it.episode}`;
     if (shown[key]) continue;
+    const title = `Новая серия: ${it.title}`;
+    const options: NotificationOptions & { data?: unknown } = {
+      body: `S${it.season}E${it.episode} — ${it.air_date}`,
+      icon: `${baseUrl}icon-192.png`,
+      badge: `${baseUrl}icon-192.png`,
+      tag: key,
+      data: { tv_id: it.tv_id },
+    };
     try {
-      const n = new Notification(`Новая серия: ${it.title}`, {
-        body: `S${it.season}E${it.episode} — ${it.air_date}`,
-        icon: `${baseUrl}icon-192.png`,
-        tag: key,
-      });
-      n.onclick = () => {
-        window.focus();
-        window.location.hash = `#/tv/${it.tv_id}`;
-        n.close();
-      };
+      if (reg) {
+        // Путь iOS PWA / Android Chrome
+        await reg.showNotification(title, options);
+      } else {
+        // Десктоп без PWA: классический Notification API
+        const n = new Notification(title, options);
+        n.onclick = () => {
+          window.focus();
+          window.location.hash = `#/tv/${it.tv_id}`;
+          n.close();
+        };
+      }
       shown[key] = now;
     } catch {
-      // ignore (Notification может бросить в некоторых браузерах)
+      // Тихо игнорируем — на iOS Safari без PWA или старых браузерах
     }
   }
   writeShown(shown);
@@ -140,5 +166,5 @@ export async function checkUpcomingNotifications(baseUrl: string): Promise<void>
     localStorage.setItem(CHECK_INTERVAL_KEY, String(Date.now()));
   } catch { /* ignore */ }
   const items = await findUpcomingEpisodes();
-  notifyUpcoming(items, baseUrl);
+  await notifyUpcoming(items, baseUrl);
 }

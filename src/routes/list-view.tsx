@@ -81,7 +81,15 @@ export function ListView() {
     return (
       <div className="pt-6 px-4">
         <BackButton />
-        <div className="mt-8 text-center text-text-dim">Загрузка…</div>
+        <div className="mt-6 space-y-3">
+          <div className="h-7 w-1/2 bg-bg-elevated rounded animate-pulse" />
+          <div className="h-3 w-1/3 bg-bg-elevated/60 rounded animate-pulse" />
+          <div className="grid grid-cols-3 gap-3 mt-5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="aspect-[2/3] bg-bg-elevated rounded-md animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

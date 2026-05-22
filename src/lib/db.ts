@@ -22,6 +22,19 @@ export interface WatchedMovie {
   updated_at: number;
 }
 
+export interface Rewatch {
+  key: string;          // genId-based, уникальный
+  media_type: MediaType;
+  tmdb_id: number;
+  title: string;
+  poster_path: string | null;
+  release_year: string;
+  watched_at: number;
+  note?: string;
+  created_at: number;
+  updated_at: number;
+}
+
 export interface WatchedEpisode {
   key: string;
   tv_id: number;
@@ -92,6 +105,7 @@ export class MoviebaseDb extends Dexie {
   ratings!: EntityTable<Rating, 'key'>;
   lists!: EntityTable<CustomList, 'id'>;
   listItems!: EntityTable<CustomListItem, 'key'>;
+  rewatches!: EntityTable<Rewatch, 'key'>;
   tombstones!: EntityTable<Tombstone, 'key'>;
   settings!: EntityTable<Setting, 'key'>;
 
@@ -132,6 +146,19 @@ export class MoviebaseDb extends Dexie {
       tombstones: 'key, table, deleted_at',
       settings: 'key, updated_at',
     });
+    // version 4: add rewatches table (повторные просмотры)
+    this.version(4).stores({
+      watchlist: 'key, media_type, tmdb_id, added_at, updated_at',
+      watchedMovies: 'tmdb_id, watched_at, updated_at',
+      watchedEpisodes: 'key, tv_id, [tv_id+season_number], watched_at, updated_at',
+      tvMeta: 'tv_id, updated_at',
+      ratings: 'key, media_type, tmdb_id, score, updated_at',
+      lists: 'id, name, created_at, updated_at',
+      listItems: 'key, list_id, [list_id+order], [media_type+tmdb_id], updated_at',
+      rewatches: 'key, [media_type+tmdb_id], watched_at, updated_at',
+      tombstones: 'key, table, deleted_at',
+      settings: 'key, updated_at',
+    });
   }
 }
 
@@ -163,11 +190,12 @@ export interface Snapshot {
   ratings: Rating[];
   lists: CustomList[];
   listItems: CustomListItem[];
+  rewatches?: Rewatch[];  // optional для обратной совместимости со снапшотами v1 без rewatches
   tombstones: Tombstone[];
 }
 
 export async function exportSnapshot(): Promise<Snapshot> {
-  const [watchlist, watchedMovies, watchedEpisodes, tvMeta, ratings, lists, listItems, tombstones] = await Promise.all([
+  const [watchlist, watchedMovies, watchedEpisodes, tvMeta, ratings, lists, listItems, rewatches, tombstones] = await Promise.all([
     db.watchlist.toArray(),
     db.watchedMovies.toArray(),
     db.watchedEpisodes.toArray(),
@@ -175,6 +203,7 @@ export async function exportSnapshot(): Promise<Snapshot> {
     db.ratings.toArray(),
     db.lists.toArray(),
     db.listItems.toArray(),
+    db.rewatches.toArray(),
     db.tombstones.toArray(),
   ]);
   return {
@@ -187,6 +216,7 @@ export async function exportSnapshot(): Promise<Snapshot> {
     ratings,
     lists,
     listItems,
+    rewatches,
     tombstones,
   };
 }
@@ -220,6 +250,7 @@ export async function applySnapshot(snap: Snapshot, mode: 'merge' | 'replace' = 
       await db.ratings.bulkPut(snap.ratings);
       await db.lists.bulkPut(snap.lists);
       await db.listItems.bulkPut(snap.listItems);
+      if (snap.rewatches) await db.rewatches.bulkPut(snap.rewatches);
       await db.tombstones.bulkPut(snap.tombstones);
     });
     return;
@@ -233,6 +264,9 @@ export async function applySnapshot(snap: Snapshot, mode: 'merge' | 'replace' = 
     await mergeTable(db.ratings as unknown as EntityTable<Rating, never>, snap.ratings, (r) => r.key);
     await mergeTable(db.lists as unknown as EntityTable<CustomList, never>, snap.lists, (r) => r.id);
     await mergeTable(db.listItems as unknown as EntityTable<CustomListItem, never>, snap.listItems, (r) => r.key);
+    if (snap.rewatches) {
+      await mergeTable(db.rewatches as unknown as EntityTable<Rewatch, never>, snap.rewatches, (r) => r.key);
+    }
 
     for (const t of snap.tombstones) {
       const existing = await db.tombstones.get(t.key);
