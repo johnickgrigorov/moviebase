@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Star } from 'lucide-react';
@@ -17,6 +18,8 @@ export function MovieDetails() {
     queryFn: () => api.movieDetails(tmdbId),
     enabled: !!tmdbId,
   });
+
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   if (isLoading || !data) {
     return (

@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api, imgUrl, mediaType as getMediaType, title as getTitle, year as getYear } from '../lib/tmdb';
+import { api, imgUrl, type PersonCastItem } from '../lib/tmdb';
 import { BackButton } from '../components/back-button';
 import { MediaCard } from '../components/media-card';
 import { formatDate } from '../lib/format';
@@ -33,7 +33,7 @@ export function PersonDetails() {
   const photo = imgUrl(person.profile_path, 'w300');
 
   // Сортируем фильмографию по дате, убираем дубли
-  const castItems = credits?.cast ?? [];
+  const castItems: PersonCastItem[] = credits?.cast ?? [];
   const seen = new Set<string>();
   const uniqueCast = castItems
     .filter((m) => {
@@ -104,12 +104,17 @@ export function PersonDetails() {
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3 px-4">
-              {uniqueCast.map((m) => (
-                <MediaCard
-                  key={`${m.media_type}-${m.id}`}
-                  media={{ ...m, media_type: m.media_type }}
-                />
-              ))}
+              {uniqueCast.map((m) => {
+                const media = m.media_type === 'movie'
+                  ? { id: m.id, media_type: 'movie' as const, title: m.title ?? '', original_title: m.original_title ?? '', release_date: m.release_date ?? '', poster_path: m.poster_path, backdrop_path: m.backdrop_path, vote_average: m.vote_average, vote_count: m.vote_count, overview: m.overview, genre_ids: m.genre_ids }
+                  : { id: m.id, media_type: 'tv' as const, name: m.name ?? m.title ?? '', original_name: m.original_name ?? m.original_title ?? '', first_air_date: m.first_air_date ?? '', poster_path: m.poster_path, backdrop_path: m.backdrop_path, vote_average: m.vote_average, vote_count: m.vote_count, overview: m.overview, genre_ids: m.genre_ids };
+                return (
+                  <MediaCard
+                    key={`${m.media_type}-${m.id}`}
+                    media={media}
+                  />
+                );
+              })}
             </div>
           )}
         </section>

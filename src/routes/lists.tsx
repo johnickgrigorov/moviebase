@@ -191,6 +191,8 @@ function WatchedTab() {
 function WatchedSeriesGrid() {
   const seriesList = useLiveQuery(async () => {
     const episodes = await db.watchedEpisodes.toArray();
+    const meta = await db.tvMeta.toArray();
+    const metaMap = new Map(meta.map((m) => [m.tv_id, m]));
     const byId = new Map<number, { tv_id: number; poster_path: string | null; title: string; count: number; last_at: number }>();
     for (const ep of episodes) {
       const existing = byId.get(ep.tv_id);
@@ -198,7 +200,8 @@ function WatchedSeriesGrid() {
         existing.count++;
         if (ep.watched_at > existing.last_at) existing.last_at = ep.watched_at;
       } else {
-        byId.set(ep.tv_id, { tv_id: ep.tv_id, poster_path: ep.poster_path ?? null, title: ep.title ?? '', count: 1, last_at: ep.watched_at });
+        const m = metaMap.get(ep.tv_id);
+        byId.set(ep.tv_id, { tv_id: ep.tv_id, poster_path: m?.poster_path ?? null, title: m?.title ?? '', count: 1, last_at: ep.watched_at });
       }
     }
     return [...byId.values()].sort((a, b) => b.last_at - a.last_at);

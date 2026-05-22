@@ -228,6 +228,7 @@ export const api = {
       with_genres: opts.genre_id,
       primary_release_year: opts.year,
       'vote_count.gte': opts.sort_by?.startsWith('vote_average') ? 200 : undefined,
+      'vote_average.gte': opts.minRating,
     }),
   discoverTv: (opts: DiscoverOpts = {}) =>
     tmdb<Paged<TvSummary>>(`/discover/tv`, {
@@ -237,6 +238,7 @@ export const api = {
       with_genres: opts.genre_id,
       first_air_date_year: opts.year,
       'vote_count.gte': opts.sort_by?.startsWith('vote_average') ? 100 : undefined,
+      'vote_average.gte': opts.minRating,
     }),
   searchPeople: (query: string, page = 1) =>
     tmdb<Paged<PersonSummary>>(`/search/person`, { query, page, include_adult: false }),
@@ -257,6 +259,7 @@ export interface DiscoverOpts {
   sort_by?: DiscoverSort;
   genre_id?: number;
   year?: number;
+  minRating?: number;
 }
 
 export { TmdbError };
@@ -281,7 +284,42 @@ export interface PersonDetails {
   also_known_as: string[];
 }
 
+export interface PersonCastItem {
+  id: number;
+  media_type: MediaType;
+  title?: string;
+  name?: string;
+  original_title?: string;
+  original_name?: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  vote_average: number;
+  vote_count: number;
+  overview: string;
+  genre_ids?: number[];
+  character: string;
+  release_date?: string;
+  first_air_date?: string;
+}
+
+export interface PersonCrewItem {
+  id: number;
+  media_type: MediaType;
+  title?: string;
+  name?: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  vote_average: number;
+  vote_count: number;
+  overview: string;
+  genre_ids?: number[];
+  job: string;
+  department: string;
+  release_date?: string;
+  first_air_date?: string;
+}
+
 export interface PersonCredits {
-  cast: (MovieSummary & TvSummary & { media_type: MediaType; character: string; release_date?: string; first_air_date?: string })[];
-  crew: (MovieSummary & TvSummary & { media_type: MediaType; job: string; department: string })[];
+  cast: PersonCastItem[];
+  crew: PersonCrewItem[];
 }
